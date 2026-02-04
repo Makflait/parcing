@@ -1,0 +1,3388 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blogger Analytics</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --bg-card: #1c2128;
+            --bg-hover: #30363d;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --text-muted: #6e7681;
+            --border: #30363d;
+            --accent: #238636;
+            --accent-blue: #58a6ff;
+            --accent-purple: #a371f7;
+            --accent-orange: #d29922;
+            --youtube: #ff0000;
+            --tiktok: #fe2c55;
+            --success: #3fb950;
+            --warning: #d29922;
+            --danger: #f85149;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Layout */
+        .app {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            position: fixed;
+            height: 100vh;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 36px;
+            height: 36px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-blue) 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            color: white;
+        }
+
+        .logo-text {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .sidebar-nav {
+            padding: 16px 12px;
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .nav-group {
+            margin-bottom: 24px;
+        }
+
+        .nav-group-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            padding: 0 12px;
+            margin-bottom: 8px;
+            letter-spacing: 0.5px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border-radius: 6px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-item.active {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .nav-item i {
+            width: 18px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+
+        .blogger-list {
+            margin-top: 8px;
+        }
+
+        .blogger-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-bottom: 2px;
+        }
+
+        .blogger-item:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .blogger-item.active {
+            background: var(--bg-tertiary);
+        }
+
+        .blogger-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 11px;
+            color: white;
+        }
+
+        .blogger-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .blogger-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .blogger-videos {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        /* Main */
+        .main {
+            flex: 1;
+            margin-left: 280px;
+            min-height: 100vh;
+        }
+
+        /* Top Bar */
+        .topbar {
+            height: 64px;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 24px;
+            position: sticky;
+            top: 0;
+            z-index: 50;
+        }
+
+        .topbar-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .topbar-actions {
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            border: 1px solid transparent;
+            transition: all 0.15s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+            border-color: var(--accent);
+        }
+
+        .btn-primary:hover {
+            background: #2ea043;
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border-color: var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-hover);
+        }
+
+        .btn-icon {
+            padding: 8px;
+            border-radius: 6px;
+            background: transparent;
+            color: var(--text-secondary);
+            border: none;
+            cursor: pointer;
+        }
+
+        .btn-icon:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        /* Content */
+        .content {
+            padding: 24px;
+        }
+
+        /* Stats Grid */
+        .stats-row {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .stat-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .stat-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+        }
+
+        .stat-icon.views { background: rgba(88, 166, 255, 0.15); color: var(--accent-blue); }
+        .stat-icon.videos { background: rgba(163, 113, 247, 0.15); color: var(--accent-purple); }
+        .stat-icon.likes { background: rgba(248, 81, 73, 0.15); color: var(--danger); }
+        .stat-icon.engagement { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+
+        .stat-value {
+            font-size: 28px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .stat-label {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        /* Charts */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .chart-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .chart-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .chart-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .chart-container {
+            height: 240px;
+            position: relative;
+        }
+
+        /* Table */
+        .table-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .table-title {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th {
+            padding: 12px 20px;
+            text-align: left;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            border-bottom: 1px solid var(--border);
+            background: var(--bg-tertiary);
+        }
+
+        td {
+            padding: 14px 20px;
+            font-size: 13px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover td {
+            background: var(--bg-tertiary);
+        }
+
+        .platform-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .platform-youtube {
+            background: rgba(255, 0, 0, 0.1);
+            color: var(--youtube);
+        }
+
+        .platform-tiktok {
+            background: rgba(254, 44, 85, 0.1);
+            color: var(--tiktok);
+        }
+
+        .platform-instagram {
+            background: linear-gradient(45deg, rgba(405, 105, 204, 0.1), rgba(255, 48, 108, 0.1));
+            color: #E1306C;
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+        }
+
+        .modal-backdrop.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 440px;
+            transform: scale(0.95);
+            transition: transform 0.2s;
+        }
+
+        .modal-backdrop.active .modal {
+            transform: scale(1);
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 12px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text-secondary);
+        }
+
+        .form-input {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+
+        .form-input:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 12px 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 300;
+        }
+
+        .toast.active {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success { border-left: 3px solid var(--success); }
+        .toast.error { border-left: 3px solid var(--danger); }
+
+        /* Loading */
+        .loading-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(13, 17, 23, 0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 400;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Links in tables */
+        .link-external {
+            color: var(--accent-blue);
+            text-decoration: none;
+        }
+
+        .link-external:hover {
+            text-decoration: underline;
+        }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .stats-row { grid-template-columns: repeat(2, 1fr); }
+            .charts-row { grid-template-columns: 1fr; }
+        }
+
+        @media (max-width: 768px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; }
+            .stats-row { grid-template-columns: 1fr; }
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: var(--bg-primary);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--bg-hover);
+        }
+
+        /* Blogger detail header */
+        .blogger-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .blogger-header-avatar {
+            width: 56px;
+            height: 56px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .blogger-header-info h1 {
+            font-size: 24px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .blogger-header-links {
+            display: flex;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .blogger-header-links a {
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 12px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .blogger-header-links .yt-link {
+            background: rgba(255, 0, 0, 0.1);
+            color: var(--youtube);
+        }
+
+        .blogger-header-links .tt-link {
+            background: rgba(254, 44, 85, 0.1);
+            color: var(--tiktok);
+        }
+
+        /* Update indicator */
+        .update-time {
+            font-size: 12px;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn.loading {
+            pointer-events: none;
+            opacity: 0.7;
+        }
+
+        .btn.loading i {
+            animation: spin 1s linear infinite;
+        }
+
+        /* Metrics Page */
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .metric-block {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+        }
+
+        .metric-block-title {
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+            letter-spacing: 0.5px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .metric-block-title i {
+            color: var(--accent-blue);
+        }
+
+        .metric-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .metric-row:last-child {
+            border-bottom: none;
+        }
+
+        .metric-name {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+
+        .metric-value {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .metric-value.good { color: var(--success); }
+        .metric-value.warning { color: var(--warning); }
+        .metric-value.bad { color: var(--danger); }
+        .metric-value.neutral { color: var(--accent-blue); }
+
+        .metric-big {
+            text-align: center;
+            padding: 16px 0;
+        }
+
+        .metric-big-value {
+            font-size: 36px;
+            font-weight: 700;
+            margin-bottom: 4px;
+        }
+
+        .metric-big-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .metric-comparison {
+            display: flex;
+            gap: 16px;
+            margin-top: 16px;
+        }
+
+        .metric-comparison-item {
+            flex: 1;
+            text-align: center;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+        }
+
+        .metric-comparison-value {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .metric-comparison-label {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .progress-bar {
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .blogger-metric-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .blogger-metric-card:last-child {
+            margin-bottom: 0;
+        }
+
+        .blogger-metric-info {
+            flex: 1;
+        }
+
+        .blogger-metric-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .blogger-metric-stat {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .blogger-metric-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        @media (max-width: 1200px) {
+            .metrics-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        @media (max-width: 768px) {
+            .metrics-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Trend Watch Page */
+        .trend-header {
+            display: flex;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .trend-stat-card {
+            flex: 1;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .trend-stat-value {
+            font-size: 24px;
+            font-weight: 700;
+            color: var(--accent-orange);
+        }
+
+        .trend-stat-label {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+
+        .rising-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            transition: all 0.15s;
+        }
+
+        .rising-card:hover {
+            border-color: var(--accent-orange);
+        }
+
+        .rising-rank {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-tertiary);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 12px;
+            color: var(--accent-orange);
+        }
+
+        .rising-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .rising-title {
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-bottom: 4px;
+        }
+
+        .rising-meta {
+            display: flex;
+            gap: 12px;
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .rising-stats {
+            display: flex;
+            gap: 16px;
+            text-align: right;
+        }
+
+        .rising-stat {
+            min-width: 60px;
+        }
+
+        .rising-stat-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .rising-stat-label {
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+
+        .velocity-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: rgba(210, 153, 34, 0.15);
+            color: var(--accent-orange);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .velocity-badge.high {
+            background: rgba(63, 185, 80, 0.15);
+            color: var(--success);
+        }
+
+        .acceleration-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: rgba(248, 81, 73, 0.15);
+            color: var(--danger);
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .trend-group {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 12px;
+        }
+
+        .trend-group-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .trend-group-title {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 600;
+        }
+
+        .trend-group-title .hashtag {
+            color: var(--accent-blue);
+        }
+
+        .trend-group-title .sound {
+            color: var(--accent-purple);
+        }
+
+        .trend-group-score {
+            font-size: 12px;
+            color: var(--accent-orange);
+            font-weight: 600;
+        }
+
+        .trend-videos-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .trend-video-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .source-form {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .source-form input {
+            flex: 1;
+        }
+
+        .source-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            margin-bottom: 8px;
+        }
+
+        .source-item .platform-icon {
+            width: 24px;
+            text-align: center;
+        }
+
+        .source-item .source-name {
+            flex: 1;
+            font-size: 13px;
+        }
+
+        .empty-trends {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+
+        .empty-trends i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.3;
+        }
+
+        .empty-trends p {
+            margin-bottom: 16px;
+        }
+
+        /* Filters */
+        .filters-bar {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .filter-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .filter-label {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .filter-select {
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 12px;
+            cursor: pointer;
+        }
+
+        .filter-select:focus {
+            outline: none;
+            border-color: var(--accent-blue);
+        }
+
+        .filter-btn {
+            padding: 6px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-secondary);
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .filter-btn:hover {
+            background: var(--bg-hover);
+            color: var(--text-primary);
+        }
+
+        .filter-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .search-input {
+            padding: 6px 12px;
+            padding-left: 32px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 12px;
+            width: 200px;
+        }
+
+        .search-wrapper {
+            position: relative;
+        }
+
+        .search-wrapper i {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+            font-size: 12px;
+        }
+
+        /* Blogger Cards Grid */
+        .bloggers-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .blogger-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+
+        .blogger-card:hover {
+            border-color: var(--accent-blue);
+            transform: translateY(-2px);
+        }
+
+        .blogger-card-header {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            margin-bottom: 16px;
+        }
+
+        .blogger-card-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 600;
+            color: white;
+        }
+
+        .blogger-card-info {
+            flex: 1;
+        }
+
+        .blogger-card-name {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .blogger-card-platforms {
+            display: flex;
+            gap: 6px;
+        }
+
+        .blogger-card-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .blogger-card-stat {
+            text-align: center;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+        }
+
+        .blogger-card-stat-value {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .blogger-card-stat-label {
+            font-size: 10px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .blogger-card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+        }
+
+        .blogger-card-engagement {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .engagement-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .engagement-indicator.high { background: var(--success); }
+        .engagement-indicator.medium { background: var(--warning); }
+        .engagement-indicator.low { background: var(--danger); }
+
+        /* Virality Gauge */
+        .virality-gauge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .virality-bar {
+            width: 60px;
+            height: 6px;
+            background: var(--bg-tertiary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .virality-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+
+        .virality-fill.viral { background: linear-gradient(90deg, #ff4757, #ffa502); }
+        .virality-fill.high { background: linear-gradient(90deg, #ffa502, #2ed573); }
+        .virality-fill.medium { background: var(--success); }
+        .virality-fill.low { background: var(--text-muted); }
+
+        /* Health Score Circle */
+        .health-score {
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            font-weight: 700;
+            position: relative;
+        }
+
+        .health-score::before {
+            content: '';
+            position: absolute;
+            inset: 3px;
+            border-radius: 50%;
+            background: var(--bg-secondary);
+        }
+
+        .health-score span {
+            position: relative;
+            z-index: 1;
+        }
+
+        .health-score.excellent { background: conic-gradient(var(--success) var(--score), var(--bg-tertiary) 0); color: var(--success); }
+        .health-score.good { background: conic-gradient(var(--accent-blue) var(--score), var(--bg-tertiary) 0); color: var(--accent-blue); }
+        .health-score.average { background: conic-gradient(var(--warning) var(--score), var(--bg-tertiary) 0); color: var(--warning); }
+        .health-score.poor { background: conic-gradient(var(--danger) var(--score), var(--bg-tertiary) 0); color: var(--danger); }
+
+        /* Quick Stats Row */
+        .quick-stats {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .quick-stat {
+            padding: 4px 10px;
+            background: var(--bg-tertiary);
+            border-radius: 4px;
+            font-size: 11px;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .quick-stat i {
+            font-size: 10px;
+        }
+
+        .quick-stat.positive { color: var(--success); }
+        .quick-stat.negative { color: var(--danger); }
+        .quick-stat.neutral { color: var(--text-muted); }
+
+        /* Trend Indicator */
+        .trend-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .trend-indicator.up { color: var(--success); }
+        .trend-indicator.down { color: var(--danger); }
+        .trend-indicator.stable { color: var(--text-muted); }
+
+        /* Metric Cards Large */
+        .metric-card-lg {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .metric-card-lg::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .metric-card-lg.primary::before { background: var(--accent-blue); }
+        .metric-card-lg.success::before { background: var(--success); }
+        .metric-card-lg.warning::before { background: var(--warning); }
+        .metric-card-lg.danger::before { background: var(--danger); }
+
+        .metric-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 16px;
+        }
+
+        .metric-card-title {
+            font-size: 12px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+        }
+
+        .metric-card-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+        }
+
+        .metric-card-icon.primary { background: rgba(88, 166, 255, 0.15); color: var(--accent-blue); }
+        .metric-card-icon.success { background: rgba(63, 185, 80, 0.15); color: var(--success); }
+        .metric-card-icon.warning { background: rgba(210, 153, 34, 0.15); color: var(--warning); }
+        .metric-card-icon.danger { background: rgba(248, 81, 73, 0.15); color: var(--danger); }
+
+        .metric-card-value {
+            font-size: 32px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .metric-card-change {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 12px;
+        }
+
+        .metric-card-change.positive { color: var(--success); }
+        .metric-card-change.negative { color: var(--danger); }
+
+        /* Summary Cards */
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        @media (max-width: 1200px) {
+            .summary-grid { grid-template-columns: repeat(2, 1fr); }
+            .bloggers-grid { grid-template-columns: 1fr; }
+        }
+
+        /* Leaderboard */
+        .leaderboard {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            transition: all 0.15s;
+        }
+
+        .leaderboard-item:hover {
+            background: var(--bg-hover);
+        }
+
+        .leaderboard-rank {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+        }
+
+        .leaderboard-rank.gold { background: linear-gradient(135deg, #ffd700, #ffaa00); color: #1a1a1a; }
+        .leaderboard-rank.silver { background: linear-gradient(135deg, #c0c0c0, #a0a0a0); color: #1a1a1a; }
+        .leaderboard-rank.bronze { background: linear-gradient(135deg, #cd7f32, #b8860b); color: #1a1a1a; }
+        .leaderboard-rank.normal { background: var(--bg-secondary); color: var(--text-muted); }
+
+        .leaderboard-info {
+            flex: 1;
+        }
+
+        .leaderboard-name {
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .leaderboard-meta {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+
+        .leaderboard-value {
+            font-size: 14px;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="app">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <div class="logo-icon"><i class="fas fa-chart-line"></i></div>
+                    <span class="logo-text">Analytics</span>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-group">
+                    <div class="nav-group-title">Меню</div>
+                    <div class="nav-item active" data-view="overview" onclick="showOverview()">
+                        <i class="fas fa-th-large"></i>
+                        <span>Обзор</span>
+                    </div>
+                    <div class="nav-item" data-view="bloggers" onclick="showBloggersList()">
+                        <i class="fas fa-users"></i>
+                        <span>Блогеры</span>
+                    </div>
+                    <div class="nav-item" data-view="metrics" onclick="showMetrics()">
+                        <i class="fas fa-chart-pie"></i>
+                        <span>Метрики</span>
+                    </div>
+                    <div class="nav-item" data-view="trends" onclick="showTrendWatch()">
+                        <i class="fas fa-fire-alt"></i>
+                        <span>Trend Watch</span>
+                    </div>
+                </div>
+
+                <div class="nav-group">
+                    <div class="nav-group-title">Блогеры</div>
+                    <div id="sidebarBloggers" class="blogger-list"></div>
+                </div>
+
+                <div class="nav-group" style="margin-top: auto;">
+                    <div class="nav-item" onclick="openAddModal()">
+                        <i class="fas fa-plus"></i>
+                        <span>Добавить блогера</span>
+                    </div>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main -->
+        <main class="main">
+            <div class="topbar">
+                <div class="topbar-title" id="pageTitle">Обзор</div>
+                <div class="topbar-actions">
+                    <span class="update-time" id="updateTime">
+                        <i class="fas fa-clock"></i>
+                        <span>—</span>
+                    </span>
+                    <button class="btn btn-secondary" id="refreshBtn" onclick="refreshData()">
+                        <i class="fas fa-sync-alt"></i>
+                        Обновить
+                    </button>
+                </div>
+            </div>
+
+            <div class="content" id="mainContent">
+                <!-- Dynamic content -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Add Modal -->
+    <div class="modal-backdrop" id="addModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">Добавить блогера</span>
+                <button class="btn-icon" onclick="closeAddModal()"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="addForm" onsubmit="handleAddBlogger(event)">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label class="form-label">Имя блогера *</label>
+                        <input type="text" class="form-input" id="inputName" placeholder="Например: Ivan" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">YouTube</label>
+                        <input type="url" class="form-input" id="inputYoutube" placeholder="https://youtube.com/@...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">TikTok</label>
+                        <input type="url" class="form-input" id="inputTiktok" placeholder="https://tiktok.com/@...">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Instagram</label>
+                        <input type="url" class="form-input" id="inputInstagram" placeholder="https://instagram.com/...">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeAddModal()">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Добавить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Loading -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMsg"></span>
+    </div>
+
+    <script>
+        const API = '';
+        let globalStats = null;
+        let currentBlogger = null;
+        let charts = {};
+
+        // Colors for bloggers
+        const colors = ['#58a6ff', '#a371f7', '#3fb950', '#d29922', '#f85149', '#fe2c55', '#ff7b72'];
+
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            loadOverview();
+        });
+
+        // ============ DATA LOADING ============
+
+        async function loadOverview() {
+            setLoading(true);
+            try {
+                // Загружаем параллельно stats и список блогеров из конфига
+                const [statsRes, bloggersRes] = await Promise.all([
+                    fetch(`${API}/api/stats`),
+                    fetch(`${API}/api/bloggers`)
+                ]);
+
+                globalStats = await statsRes.json();
+                configBloggers = await bloggersRes.json();
+
+                // Мёржим: блогеры из конфига + статистика (если есть)
+                const statsMap = {};
+                (globalStats.bloggers || []).forEach(b => statsMap[b.name] = b);
+
+                globalStats.bloggers = configBloggers.map(cfg => {
+                    const stats = statsMap[cfg.name] || {};
+                    return {
+                        name: cfg.name,
+                        youtube: cfg.youtube || '',
+                        tiktok: cfg.tiktok || '',
+                        instagram: cfg.instagram || '',
+                        videos: stats.videos || 0,
+                        views: stats.views || 0,
+                        likes: stats.likes || 0,
+                        comments: stats.comments || 0,
+                        youtube_views: stats.youtube_views || 0,
+                        tiktok_views: stats.tiktok_views || 0,
+                        avg_views: stats.avg_views || 0,
+                        engagement: stats.engagement || 0
+                    };
+                });
+
+                updateSidebar();
+                renderOverview();
+                setActiveNav('overview');
+                document.getElementById('pageTitle').textContent = 'Обзор';
+                updateLastRefresh();
+            } catch (e) {
+                showToast('Ошибка загрузки', 'error');
+            }
+            setLoading(false);
+        }
+
+        async function loadBloggerDetail(name) {
+            setLoading(true);
+            try {
+                const res = await fetch(`${API}/api/blogger/${encodeURIComponent(name)}`);
+                const data = await res.json();
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+
+                currentBlogger = data;
+                renderBloggerDetail(data);
+                setActiveNav(null);
+                setActiveBlogger(name);
+                document.getElementById('pageTitle').textContent = name;
+            } catch (e) {
+                showToast('Ошибка загрузки', 'error');
+            }
+            setLoading(false);
+        }
+
+        async function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.classList.add('loading');
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Обновление...';
+
+            try {
+                // Start parser
+                await fetch(`${API}/api/parser/start`, { method: 'POST' });
+
+                // Poll status
+                let running = true;
+                while (running) {
+                    await new Promise(r => setTimeout(r, 2000));
+                    const res = await fetch(`${API}/api/parser/status`);
+                    const status = await res.json();
+                    running = status.running;
+                }
+
+                showToast('Данные обновлены!', 'success');
+
+                // Reload current view
+                if (currentBlogger) {
+                    await loadBloggerDetail(currentBlogger.name);
+                } else {
+                    await loadOverview();
+                }
+            } catch (e) {
+                showToast('Ошибка обновления', 'error');
+            }
+
+            btn.classList.remove('loading');
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Обновить';
+        }
+
+        // ============ RENDER OVERVIEW ============
+
+        function renderOverview() {
+            const stats = globalStats;
+            const today = new Date().toLocaleDateString('ru-RU');
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon views"><i class="fas fa-eye"></i></div>
+                        </div>
+                        <div class="stat-value">${formatNum(stats.total_views)}</div>
+                        <div class="stat-label">Всего просмотров</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon videos"><i class="fas fa-video"></i></div>
+                        </div>
+                        <div class="stat-value">${stats.total_videos}</div>
+                        <div class="stat-label">Всего видео</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon likes"><i class="fas fa-heart"></i></div>
+                        </div>
+                        <div class="stat-value">${formatNum(stats.total_likes)}</div>
+                        <div class="stat-label">Всего лайков</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon engagement"><i class="fas fa-chart-line"></i></div>
+                        </div>
+                        <div class="stat-value">${stats.engagement}%</div>
+                        <div class="stat-label">Engagement Rate</div>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <span class="chart-title">Просмотры по блогерам</span>
+                            <span style="font-size: 12px; color: var(--text-muted);">Данные на ${today}</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chartBloggers"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <span class="chart-title">По платформам</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chartPlatforms"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-header">
+                        <span class="table-title">Все блогеры</span>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Блогер</th>
+                                <th>Видео</th>
+                                <th>Просмотры</th>
+                                <th>Лайки</th>
+                                <th>Engagement</th>
+                                <th>YouTube</th>
+                                <th>TikTok</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${stats.bloggers.map((b, i) => `
+                                <tr style="cursor: pointer;" onclick="loadBloggerDetail('${b.name}')">
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div class="blogger-avatar" style="width: 28px; height: 28px; font-size: 11px; background: ${colors[i % colors.length]};">${b.name.charAt(0)}</div>
+                                            <strong>${b.name}</strong>
+                                        </div>
+                                    </td>
+                                    <td>${b.videos}</td>
+                                    <td>${formatNum(b.views)}</td>
+                                    <td>${formatNum(b.likes)}</td>
+                                    <td>${b.engagement}%</td>
+                                    <td><span class="platform-tag platform-youtube"><i class="fab fa-youtube"></i> ${formatNum(b.youtube_views)}</span></td>
+                                    <td><span class="platform-tag platform-tiktok"><i class="fab fa-tiktok"></i> ${formatNum(b.tiktok_views)}</span></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            renderOverviewCharts();
+        }
+
+        function renderOverviewCharts() {
+            // Destroy old charts
+            Object.values(charts).forEach(c => c.destroy());
+            charts = {};
+
+            const stats = globalStats;
+
+            // Bloggers bar chart
+            charts.bloggers = new Chart(document.getElementById('chartBloggers'), {
+                type: 'bar',
+                data: {
+                    labels: stats.bloggers.map(b => b.name),
+                    datasets: [{
+                        data: stats.bloggers.map(b => b.views),
+                        backgroundColor: stats.bloggers.map((_, i) => colors[i % colors.length]),
+                        borderRadius: 4,
+                        barThickness: 32
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#30363d' },
+                            ticks: { color: '#8b949e', font: { size: 11 } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#8b949e', font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+
+            // Platforms doughnut
+            charts.platforms = new Chart(document.getElementById('chartPlatforms'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['YouTube', 'TikTok'],
+                    datasets: [{
+                        data: [stats.platforms.YouTube.views, stats.platforms.TikTok.views],
+                        backgroundColor: ['#ff0000', '#fe2c55'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#f0f6fc', font: { size: 12 }, padding: 16 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ============ RENDER BLOGGER DETAIL ============
+
+        function renderBloggerDetail(data) {
+            const idx = globalStats.bloggers.findIndex(b => b.name === data.name);
+            const color = colors[idx % colors.length] || colors[0];
+
+            const ytVideos = data.videos.filter(v => v.platform === 'YouTube');
+            const ttVideos = data.videos.filter(v => v.platform === 'TikTok');
+            const ytViews = ytVideos.reduce((s, v) => s + v.views, 0);
+            const ttViews = ttVideos.reduce((s, v) => s + v.views, 0);
+
+            document.getElementById('mainContent').innerHTML = `
+                <div class="blogger-header">
+                    <div class="blogger-header-avatar" style="background: ${color};">${data.name.charAt(0)}</div>
+                    <div class="blogger-header-info">
+                        <h1>${data.name}</h1>
+                        <div class="blogger-header-links">
+                            ${data.config?.youtube ? `<a href="${data.config.youtube}" target="_blank" class="yt-link"><i class="fab fa-youtube"></i> YouTube</a>` : ''}
+                            ${data.config?.tiktok ? `<a href="${data.config.tiktok}" target="_blank" class="tt-link"><i class="fab fa-tiktok"></i> TikTok</a>` : ''}
+                        </div>
+                    </div>
+                    <div style="margin-left: auto;">
+                        <button class="btn btn-secondary" onclick="confirmDelete('${data.name}')">
+                            <i class="fas fa-trash"></i> Удалить
+                        </button>
+                    </div>
+                </div>
+
+                <div class="stats-row">
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon views"><i class="fas fa-eye"></i></div>
+                        </div>
+                        <div class="stat-value">${formatNum(data.total_views)}</div>
+                        <div class="stat-label">Просмотры</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon videos"><i class="fas fa-video"></i></div>
+                        </div>
+                        <div class="stat-value">${data.total_videos}</div>
+                        <div class="stat-label">Видео</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon" style="background: rgba(255, 0, 0, 0.15); color: #ff0000;"><i class="fab fa-youtube"></i></div>
+                        </div>
+                        <div class="stat-value">${ytVideos.length}</div>
+                        <div class="stat-label">YouTube (${formatNum(ytViews)})</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-header">
+                            <div class="stat-icon" style="background: rgba(254, 44, 85, 0.15); color: #fe2c55;"><i class="fab fa-tiktok"></i></div>
+                        </div>
+                        <div class="stat-value">${ttVideos.length}</div>
+                        <div class="stat-label">TikTok (${formatNum(ttViews)})</div>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <span class="chart-title">Топ-10 видео по просмотрам</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chartTopVideos"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <span class="chart-title">YouTube vs TikTok</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chartPlatformSplit"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-card">
+                    <div class="table-header">
+                        <span class="table-title">Все видео (${data.videos.length})</span>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Платформа</th>
+                                <th>Название</th>
+                                <th>Просмотры</th>
+                                <th>Лайки</th>
+                                <th>Дата</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.videos.map(v => `
+                                <tr>
+                                    <td><span class="platform-tag platform-${v.platform.toLowerCase()}"><i class="fab fa-${v.platform.toLowerCase()}"></i> ${v.platform}</span></td>
+                                    <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${v.title}</td>
+                                    <td>${formatNum(v.views)}</td>
+                                    <td>${formatNum(v.likes)}</td>
+                                    <td>${v.publish_date || '—'}</td>
+                                    <td><a href="${v.url}" target="_blank" class="link-external"><i class="fas fa-external-link-alt"></i></a></td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            renderBloggerCharts(data, ytViews, ttViews);
+        }
+
+        function renderBloggerCharts(data, ytViews, ttViews) {
+            Object.values(charts).forEach(c => c.destroy());
+            charts = {};
+
+            // Top 10 videos
+            const top10 = data.videos.slice(0, 10);
+            charts.topVideos = new Chart(document.getElementById('chartTopVideos'), {
+                type: 'bar',
+                data: {
+                    labels: top10.map(v => v.title.substring(0, 20) + '...'),
+                    datasets: [{
+                        data: top10.map(v => v.views),
+                        backgroundColor: top10.map(v => v.platform === 'YouTube' ? '#ff0000' : '#fe2c55'),
+                        borderRadius: 4,
+                        barThickness: 20
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: {
+                            beginAtZero: true,
+                            grid: { color: '#30363d' },
+                            ticks: { color: '#8b949e', font: { size: 10 } }
+                        },
+                        y: {
+                            grid: { display: false },
+                            ticks: { color: '#8b949e', font: { size: 10 } }
+                        }
+                    }
+                }
+            });
+
+            // Platform split
+            charts.platformSplit = new Chart(document.getElementById('chartPlatformSplit'), {
+                type: 'doughnut',
+                data: {
+                    labels: ['YouTube', 'TikTok'],
+                    datasets: [{
+                        data: [ytViews, ttViews],
+                        backgroundColor: ['#ff0000', '#fe2c55'],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '65%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: { color: '#f0f6fc', font: { size: 12 }, padding: 16 }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ============ BLOGGERS LIST ============
+
+        let bloggersFilter = { platform: 'all', sort: 'views', search: '' };
+
+        function showBloggersList() {
+            currentView = 'bloggers';
+            setActiveNav('bloggers');
+            document.getElementById('pageTitle').textContent = 'Блогеры';
+            currentBlogger = null;
+
+            const stats = globalStats;
+            const bloggers = stats.bloggers;
+
+            // Фильтрация и сортировка
+            let filtered = [...bloggers];
+
+            if (bloggersFilter.search) {
+                const s = bloggersFilter.search.toLowerCase();
+                filtered = filtered.filter(b => b.name.toLowerCase().includes(s));
+            }
+
+            if (bloggersFilter.platform === 'youtube') {
+                filtered = filtered.filter(b => b.youtube_views > 0);
+            } else if (bloggersFilter.platform === 'tiktok') {
+                filtered = filtered.filter(b => b.tiktok_views > 0);
+            }
+
+            filtered.sort((a, b) => {
+                switch (bloggersFilter.sort) {
+                    case 'engagement': return b.engagement - a.engagement;
+                    case 'videos': return b.videos - a.videos;
+                    case 'name': return a.name.localeCompare(b.name);
+                    default: return b.views - a.views;
+                }
+            });
+
+            // Расчёт общих метрик
+            const totalViews = bloggers.reduce((s, b) => s + b.views, 0);
+            const totalVideos = bloggers.reduce((s, b) => s + b.videos, 0);
+            const avgEngagement = bloggers.length > 0
+                ? (bloggers.reduce((s, b) => s + b.engagement, 0) / bloggers.length).toFixed(2)
+                : 0;
+
+            document.getElementById('mainContent').innerHTML = `
+                <!-- Summary Cards -->
+                <div class="summary-grid">
+                    <div class="metric-card-lg primary">
+                        <div class="metric-card-header">
+                            <span class="metric-card-title">Всего блогеров</span>
+                            <div class="metric-card-icon primary"><i class="fas fa-users"></i></div>
+                        </div>
+                        <div class="metric-card-value">${bloggers.length}</div>
+                        <div class="quick-stats">
+                            <span class="quick-stat neutral"><i class="fab fa-youtube"></i> ${bloggers.filter(b => b.youtube_views > 0).length}</span>
+                            <span class="quick-stat neutral"><i class="fab fa-tiktok"></i> ${bloggers.filter(b => b.tiktok_views > 0).length}</span>
+                        </div>
+                    </div>
+                    <div class="metric-card-lg success">
+                        <div class="metric-card-header">
+                            <span class="metric-card-title">Общие просмотры</span>
+                            <div class="metric-card-icon success"><i class="fas fa-eye"></i></div>
+                        </div>
+                        <div class="metric-card-value">${formatNum(totalViews)}</div>
+                        <div class="metric-card-change positive">
+                            <i class="fas fa-chart-line"></i>
+                            ${formatNum(Math.round(totalViews / bloggers.length))} в среднем
+                        </div>
+                    </div>
+                    <div class="metric-card-lg warning">
+                        <div class="metric-card-header">
+                            <span class="metric-card-title">Всего видео</span>
+                            <div class="metric-card-icon warning"><i class="fas fa-video"></i></div>
+                        </div>
+                        <div class="metric-card-value">${totalVideos}</div>
+                        <div class="metric-card-change">
+                            ${Math.round(totalVideos / bloggers.length)} на блогера
+                        </div>
+                    </div>
+                    <div class="metric-card-lg danger">
+                        <div class="metric-card-header">
+                            <span class="metric-card-title">Ср. Engagement</span>
+                            <div class="metric-card-icon danger"><i class="fas fa-heart"></i></div>
+                        </div>
+                        <div class="metric-card-value">${avgEngagement}%</div>
+                        <div class="metric-card-change ${avgEngagement > 3 ? 'positive' : 'negative'}">
+                            ${avgEngagement > 3 ? '<i class="fas fa-arrow-up"></i> Хорошо' : '<i class="fas fa-arrow-down"></i> Нужен рост'}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Filters Bar -->
+                <div class="filters-bar">
+                    <div class="search-wrapper">
+                        <i class="fas fa-search"></i>
+                        <input type="text" class="search-input" placeholder="Поиск блогера..."
+                               value="${bloggersFilter.search}" onkeyup="filterBloggers('search', this.value)">
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Платформа:</span>
+                        <button class="filter-btn ${bloggersFilter.platform === 'all' ? 'active' : ''}" onclick="filterBloggers('platform', 'all')">Все</button>
+                        <button class="filter-btn ${bloggersFilter.platform === 'youtube' ? 'active' : ''}" onclick="filterBloggers('platform', 'youtube')"><i class="fab fa-youtube"></i></button>
+                        <button class="filter-btn ${bloggersFilter.platform === 'tiktok' ? 'active' : ''}" onclick="filterBloggers('platform', 'tiktok')"><i class="fab fa-tiktok"></i></button>
+                    </div>
+                    <div class="filter-group">
+                        <span class="filter-label">Сортировка:</span>
+                        <select class="filter-select" onchange="filterBloggers('sort', this.value)">
+                            <option value="views" ${bloggersFilter.sort === 'views' ? 'selected' : ''}>По просмотрам</option>
+                            <option value="engagement" ${bloggersFilter.sort === 'engagement' ? 'selected' : ''}>По engagement</option>
+                            <option value="videos" ${bloggersFilter.sort === 'videos' ? 'selected' : ''}>По кол-ву видео</option>
+                            <option value="name" ${bloggersFilter.sort === 'name' ? 'selected' : ''}>По имени</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="openAddModal()" style="margin-left: auto;">
+                        <i class="fas fa-plus"></i> Добавить
+                    </button>
+                </div>
+
+                <!-- Blogger Cards -->
+                <div class="bloggers-grid">
+                    ${filtered.map((b, i) => {
+                        const ytShare = b.views > 0 ? Math.round(b.youtube_views / b.views * 100) : 0;
+                        const ttShare = b.views > 0 ? Math.round(b.tiktok_views / b.views * 100) : 0;
+                        const engClass = b.engagement > 5 ? 'high' : b.engagement > 2 ? 'medium' : 'low';
+                        const healthScore = Math.min(100, Math.round((b.engagement * 10) + (b.videos > 10 ? 20 : b.videos * 2) + (b.views > 100000 ? 30 : b.views / 5000)));
+                        const healthClass = healthScore > 70 ? 'excellent' : healthScore > 50 ? 'good' : healthScore > 30 ? 'average' : 'poor';
+
+                        return `
+                        <div class="blogger-card" onclick="loadBloggerDetail('${b.name}')">
+                            <div class="blogger-card-header">
+                                <div class="blogger-card-avatar" style="background: ${colors[i % colors.length]};">${b.name.charAt(0)}</div>
+                                <div class="blogger-card-info">
+                                    <div class="blogger-card-name">${b.name}</div>
+                                    <div class="blogger-card-platforms">
+                                        ${b.youtube || b.youtube_views > 0 ? '<span class="platform-tag platform-youtube"><i class="fab fa-youtube"></i></span>' : ''}
+                                        ${b.tiktok || b.tiktok_views > 0 ? '<span class="platform-tag platform-tiktok"><i class="fab fa-tiktok"></i></span>' : ''}
+                                        ${b.instagram ? '<span class="platform-tag platform-instagram"><i class="fab fa-instagram"></i></span>' : ''}
+                                    </div>
+                                </div>
+                                <div class="health-score ${healthClass}" style="--score: ${healthScore}%;">
+                                    <span>${healthScore}</span>
+                                </div>
+                            </div>
+                            <div class="blogger-card-stats">
+                                <div class="blogger-card-stat">
+                                    <div class="blogger-card-stat-value">${formatNum(b.views)}</div>
+                                    <div class="blogger-card-stat-label">Просмотры</div>
+                                </div>
+                                <div class="blogger-card-stat">
+                                    <div class="blogger-card-stat-value">${b.videos}</div>
+                                    <div class="blogger-card-stat-label">Видео</div>
+                                </div>
+                                <div class="blogger-card-stat">
+                                    <div class="blogger-card-stat-value">${formatNum(b.avg_views || 0)}</div>
+                                    <div class="blogger-card-stat-label">Ср. просмотры</div>
+                                </div>
+                            </div>
+                            <div class="blogger-card-footer">
+                                <div class="blogger-card-engagement">
+                                    <span class="engagement-indicator ${engClass}"></span>
+                                    <span style="font-size: 12px; color: var(--text-secondary);">Engagement: <strong style="color: var(--${engClass === 'high' ? 'success' : engClass === 'medium' ? 'warning' : 'danger'});">${b.engagement}%</strong></span>
+                                </div>
+                                <div class="quick-stats">
+                                    <span class="quick-stat" style="color: var(--youtube);">${ytShare}% YT</span>
+                                    <span class="quick-stat" style="color: var(--tiktok);">${ttShare}% TT</span>
+                                </div>
+                            </div>
+                        </div>
+                    `}).join('')}
+                </div>
+
+                ${filtered.length === 0 ? `
+                    <div class="empty-state">
+                        <i class="fas fa-search"></i>
+                        <p>Блогеры не найдены</p>
+                    </div>
+                ` : ''}
+
+                <!-- Quick Actions -->
+                <div class="table-card">
+                    <div class="table-header">
+                        <span class="table-title">Быстрое управление</span>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Блогер</th>
+                                <th>Просмотры</th>
+                                <th>Engagement</th>
+                                <th>Здоровье</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${filtered.map((b, i) => {
+                                const healthScore = Math.min(100, Math.round((b.engagement * 10) + (b.videos > 10 ? 20 : b.videos * 2) + (b.views > 100000 ? 30 : b.views / 5000)));
+                                return `
+                                <tr>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div class="blogger-avatar" style="width: 28px; height: 28px; font-size: 11px; background: ${colors[i % colors.length]};">${b.name.charAt(0)}</div>
+                                            <strong>${b.name}</strong>
+                                        </div>
+                                    </td>
+                                    <td>${formatNum(b.views)}</td>
+                                    <td><span class="metric-value ${b.engagement > 5 ? 'good' : b.engagement > 2 ? 'warning' : 'bad'}">${b.engagement}%</span></td>
+                                    <td>
+                                        <div class="virality-gauge">
+                                            <div class="virality-bar">
+                                                <div class="virality-fill ${healthScore > 70 ? 'viral' : healthScore > 50 ? 'high' : healthScore > 30 ? 'medium' : 'low'}" style="width: ${healthScore}%;"></div>
+                                            </div>
+                                            <span style="font-size: 11px; color: var(--text-muted);">${healthScore}</span>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <button class="btn-icon" onclick="event.stopPropagation(); loadBloggerDetail('${b.name}')"><i class="fas fa-eye"></i></button>
+                                        <button class="btn-icon" onclick="event.stopPropagation(); confirmDelete('${b.name}')" style="color: var(--danger);"><i class="fas fa-trash"></i></button>
+                                    </td>
+                                </tr>
+                            `}).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function filterBloggers(type, value) {
+            bloggersFilter[type] = value;
+            showBloggersList();
+        }
+
+        // ============ SIDEBAR ============
+
+        function updateSidebar() {
+            document.getElementById('sidebarBloggers').innerHTML = globalStats.bloggers.map((b, i) => `
+                <div class="blogger-item" data-blogger="${b.name}" onclick="loadBloggerDetail('${b.name}')">
+                    <div class="blogger-avatar" style="background: ${colors[i % colors.length]};">${b.name.charAt(0)}</div>
+                    <div class="blogger-info">
+                        <div class="blogger-name">${b.name}</div>
+                        <div class="blogger-videos">${b.videos} видео</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function setActiveNav(view) {
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            if (view) {
+                document.querySelector(`.nav-item[data-view="${view}"]`)?.classList.add('active');
+            }
+            document.querySelectorAll('.blogger-item').forEach(el => el.classList.remove('active'));
+        }
+
+        function setActiveBlogger(name) {
+            document.querySelectorAll('.blogger-item').forEach(el => {
+                el.classList.toggle('active', el.dataset.blogger === name);
+            });
+        }
+
+        // ============ METRICS ============
+
+        let metricsFilter = { period: 'all', platform: 'all' };
+
+        function showMetrics() {
+            currentView = 'metrics';
+            setActiveNav('metrics');
+            document.getElementById('pageTitle').textContent = 'Метрики';
+            currentBlogger = null;
+
+            const stats = globalStats;
+            const bloggers = stats.bloggers;
+
+            // Calculate metrics
+            const totalViews = stats.total_views;
+            const totalLikes = stats.total_likes;
+            const totalComments = stats.total_comments;
+            const totalVideos = stats.total_videos;
+
+            // Engagement metrics
+            const engagementRate = totalViews > 0 ? (totalLikes / totalViews * 100).toFixed(2) : 0;
+            const commentRate = totalViews > 0 ? (totalComments / totalViews * 100).toFixed(3) : 0;
+            const likeToCommentRatio = totalComments > 0 ? (totalLikes / totalComments).toFixed(1) : 0;
+
+            // Averages
+            const avgViews = totalVideos > 0 ? Math.round(totalViews / totalVideos) : 0;
+            const avgLikes = totalVideos > 0 ? Math.round(totalLikes / totalVideos) : 0;
+            const avgComments = totalVideos > 0 ? Math.round(totalComments / totalVideos) : 0;
+
+            // Platform metrics
+            const ytViews = stats.platforms.YouTube?.views || 0;
+            const ttViews = stats.platforms.TikTok?.views || 0;
+            const ytVideos = stats.platforms.YouTube?.videos || 0;
+            const ttVideos = stats.platforms.TikTok?.videos || 0;
+            const ytAvg = ytVideos > 0 ? Math.round(ytViews / ytVideos) : 0;
+            const ttAvg = ttVideos > 0 ? Math.round(ttViews / ttVideos) : 0;
+            const platformDominance = totalViews > 0 ? ((ytViews > ttViews ? ytViews : ttViews) / totalViews * 100).toFixed(1) : 0;
+            const dominantPlatform = ytViews > ttViews ? 'YouTube' : 'TikTok';
+
+            // Viral metrics (videos with >2x average views)
+            const viralThreshold = avgViews * 2;
+            let viralCount = 0;
+            bloggers.forEach(b => {
+                if (b.avg_views && b.avg_views > viralThreshold) viralCount++;
+            });
+            const viralRate = bloggers.length > 0 ? (viralCount / bloggers.length * 100).toFixed(0) : 0;
+
+            // Top/Bottom performers - с дедупликацией!
+            const sortedByViews = [...bloggers].sort((a, b) => b.views - a.views);
+            const sortedByEngagement = [...bloggers].sort((a, b) => b.engagement - a.engagement);
+            const sortedByAvgViews = [...bloggers].sort((a, b) => (b.avg_views || 0) - (a.avg_views || 0));
+
+            const topPerformer = sortedByViews[0];
+            const bottomPerformer = sortedByViews[sortedByViews.length - 1];
+
+            // Уникальный топ по engagement (не такой же как topPerformer)
+            const topEngager = sortedByEngagement.find(b => b.name !== topPerformer?.name) || sortedByEngagement[0];
+
+            // Уникальный топ по средним просмотрам
+            const topAvgPerformer = sortedByAvgViews.find(b => b.name !== topPerformer?.name && b.name !== topEngager?.name) || sortedByAvgViews[0];
+
+            // Продуктовые метрики
+            const contentEfficiency = avgViews > 0 ? ((avgLikes + avgComments) / avgViews * 100).toFixed(2) : 0;
+            const viewsPerBlogger = bloggers.length > 0 ? Math.round(totalViews / bloggers.length) : 0;
+            const videosPerBlogger = bloggers.length > 0 ? Math.round(totalVideos / bloggers.length) : 0;
+
+            // Виральность - расширенные метрики
+            const viralBloggers = bloggers.filter(b => b.avg_views && b.avg_views > viralThreshold);
+            const highEngagementCount = bloggers.filter(b => b.engagement > 5).length;
+            const mediumEngagementCount = bloggers.filter(b => b.engagement > 2 && b.engagement <= 5).length;
+            const lowEngagementCount = bloggers.filter(b => b.engagement <= 2).length;
+
+            // Качество контента - Health Score
+            const avgHealthScore = bloggers.length > 0
+                ? Math.round(bloggers.reduce((sum, b) => {
+                    return sum + Math.min(100, Math.round((b.engagement * 10) + (b.videos > 10 ? 20 : b.videos * 2) + (b.views > 100000 ? 30 : b.views / 5000)));
+                }, 0) / bloggers.length)
+                : 0;
+
+            // Индекс роста (Growth Index) - комплексная метрика
+            const growthIndex = Math.round(
+                (engagementRate * 10) +
+                (viralRate * 0.5) +
+                (avgHealthScore * 0.3) +
+                (totalVideos > 100 ? 20 : totalVideos * 0.2)
+            );
+
+            document.getElementById('mainContent').innerHTML = `
+                <!-- Filters -->
+                <div class="filters-bar">
+                    <div class="filter-group">
+                        <span class="filter-label">Платформа:</span>
+                        <button class="filter-btn ${metricsFilter.platform === 'all' ? 'active' : ''}" onclick="filterMetrics('platform', 'all')">Все</button>
+                        <button class="filter-btn ${metricsFilter.platform === 'youtube' ? 'active' : ''}" onclick="filterMetrics('platform', 'youtube')"><i class="fab fa-youtube"></i> YouTube</button>
+                        <button class="filter-btn ${metricsFilter.platform === 'tiktok' ? 'active' : ''}" onclick="filterMetrics('platform', 'tiktok')"><i class="fab fa-tiktok"></i> TikTok</button>
+                    </div>
+                </div>
+
+                <!-- Key Product Metrics -->
+                <div class="summary-grid">
+                    <div class="metric-card-lg primary">
+                        <div class="metric-card-header">
+                            <span class="metric-card-title">Growth Index</span>
+                            <div class="metric-card-icon primary"><i class="fas fa-rocket"></i></div>
+                        </div>
+                        <div class="metric-card-value" style="color: ${growthIndex > 50 ? 'var(--success)' : growthIndex > 30 ? 'var(--warning)' : 'var(--danger)'};">${growthIndex}</div>
+                        <div class="metric-card-change ${growthIndex > 50 ? 'positive' : ''}">
+                            <i class="fas fa-info-circle"></i>
+                            Комплексный показатель роста
+                        </div>
+                    </div>
+                    <div class="metric-card-lg success">
+                        <div class="metric-card-header">
+                            <span class="metric-card-title">Health Score</span>
+                            <div class="metric-card-icon success"><i class="fas fa-heartbeat"></i></div>
+                        </div>
+                        <div class="metric-card-value">${avgHealthScore}%</div>
+                        <div class="metric-card-change ${avgHealthScore > 50 ? 'positive' : 'negative'}">
+                            ${avgHealthScore > 70 ? '<i class="fas fa-check"></i> Отлично' : avgHealthScore > 50 ? '<i class="fas fa-check"></i> Хорошо' : '<i class="fas fa-exclamation"></i> Требует внимания'}
+                        </div>
+                    </div>
+                    <div class="metric-card-lg warning">
+                        <div class="metric-card-header">
+                            <span class="metric-card-title">Viral Rate</span>
+                            <div class="metric-card-icon warning"><i class="fas fa-fire-alt"></i></div>
+                        </div>
+                        <div class="metric-card-value">${viralRate}%</div>
+                        <div class="metric-card-change">
+                            ${viralCount} из ${bloggers.length} блогеров
+                        </div>
+                    </div>
+                    <div class="metric-card-lg danger">
+                        <div class="metric-card-header">
+                            <span class="metric-card-title">Engagement Rate</span>
+                            <div class="metric-card-icon danger"><i class="fas fa-heart"></i></div>
+                        </div>
+                        <div class="metric-card-value">${engagementRate}%</div>
+                        <div class="metric-card-change ${engagementRate > 3 ? 'positive' : 'negative'}">
+                            ${engagementRate > 5 ? 'Выше среднего' : engagementRate > 3 ? 'Средний' : 'Ниже среднего'}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="metrics-grid">
+                    <!-- Engagement Block -->
+                    <div class="metric-block">
+                        <div class="metric-block-title"><i class="fas fa-heart"></i> Engagement метрики</div>
+                        <div class="metric-row">
+                            <span class="metric-name">Engagement Rate</span>
+                            <span class="metric-value ${engagementRate > 5 ? 'good' : engagementRate > 2 ? 'warning' : 'bad'}">${engagementRate}%</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Comment Rate</span>
+                            <span class="metric-value ${commentRate > 0.5 ? 'good' : 'neutral'}">${commentRate}%</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Likes / Comments</span>
+                            <span class="metric-value neutral">${likeToCommentRatio}x</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Content Efficiency</span>
+                            <span class="metric-value ${contentEfficiency > 5 ? 'good' : 'neutral'}">${contentEfficiency}%</span>
+                        </div>
+                    </div>
+
+                    <!-- Virality Block - Extended -->
+                    <div class="metric-block">
+                        <div class="metric-block-title"><i class="fas fa-fire"></i> Виральность</div>
+                        <div class="metric-big">
+                            <div class="metric-big-value" style="color: var(--accent-orange);">${viralRate}%</div>
+                            <div class="metric-big-label">Viral Rate (>2x avg views)</div>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Порог виральности</span>
+                            <span class="metric-value neutral">${formatNum(viralThreshold)} views</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Виральных блогеров</span>
+                            <span class="metric-value good">${viralCount} из ${bloggers.length}</span>
+                        </div>
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 8px;">Распределение engagement</div>
+                            <div style="display: flex; gap: 8px;">
+                                <div style="flex: 1; text-align: center; padding: 8px; background: rgba(63, 185, 80, 0.1); border-radius: 4px;">
+                                    <div style="font-size: 16px; font-weight: 600; color: var(--success);">${highEngagementCount}</div>
+                                    <div style="font-size: 10px; color: var(--text-muted);">Высокий (>5%)</div>
+                                </div>
+                                <div style="flex: 1; text-align: center; padding: 8px; background: rgba(210, 153, 34, 0.1); border-radius: 4px;">
+                                    <div style="font-size: 16px; font-weight: 600; color: var(--warning);">${mediumEngagementCount}</div>
+                                    <div style="font-size: 10px; color: var(--text-muted);">Средний (2-5%)</div>
+                                </div>
+                                <div style="flex: 1; text-align: center; padding: 8px; background: rgba(248, 81, 73, 0.1); border-radius: 4px;">
+                                    <div style="font-size: 16px; font-weight: 600; color: var(--danger);">${lowEngagementCount}</div>
+                                    <div style="font-size: 10px; color: var(--text-muted);">Низкий (<2%)</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Platform Comparison Block -->
+                    <div class="metric-block">
+                        <div class="metric-block-title"><i class="fas fa-balance-scale"></i> Платформы</div>
+                        <div class="metric-comparison">
+                            <div class="metric-comparison-item">
+                                <div class="metric-comparison-value" style="color: var(--youtube);">${formatNum(ytViews)}</div>
+                                <div class="metric-comparison-label"><i class="fab fa-youtube"></i> YouTube</div>
+                            </div>
+                            <div class="metric-comparison-item">
+                                <div class="metric-comparison-value" style="color: var(--tiktok);">${formatNum(ttViews)}</div>
+                                <div class="metric-comparison-label"><i class="fab fa-tiktok"></i> TikTok</div>
+                            </div>
+                        </div>
+                        <div class="metric-row" style="margin-top: 12px;">
+                            <span class="metric-name">Доминирующая платформа</span>
+                            <span class="metric-value neutral">${dominantPlatform} (${platformDominance}%)</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Ср. просмотры YouTube</span>
+                            <span class="metric-value" style="color: var(--youtube);">${formatNum(ytAvg)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Ср. просмотры TikTok</span>
+                            <span class="metric-value" style="color: var(--tiktok);">${formatNum(ttAvg)}</span>
+                        </div>
+                    </div>
+
+                    <!-- Averages Block -->
+                    <div class="metric-block">
+                        <div class="metric-block-title"><i class="fas fa-chart-bar"></i> Средние показатели</div>
+                        <div class="metric-row">
+                            <span class="metric-name">Просмотры / видео</span>
+                            <span class="metric-value neutral">${formatNum(avgViews)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Лайки / видео</span>
+                            <span class="metric-value neutral">${formatNum(avgLikes)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Комментарии / видео</span>
+                            <span class="metric-value neutral">${formatNum(avgComments)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Просмотры / блогер</span>
+                            <span class="metric-value neutral">${formatNum(viewsPerBlogger)}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">Видео / блогер</span>
+                            <span class="metric-value neutral">${videosPerBlogger}</span>
+                        </div>
+                    </div>
+
+                    <!-- Leaders Block - Fixed duplicates -->
+                    <div class="metric-block">
+                        <div class="metric-block-title"><i class="fas fa-trophy"></i> Лидеры</div>
+                        <div class="leaderboard">
+                            ${topPerformer ? `
+                            <div class="leaderboard-item" onclick="loadBloggerDetail('${topPerformer.name}')" style="cursor: pointer;">
+                                <div class="leaderboard-rank gold">1</div>
+                                <div class="leaderboard-info">
+                                    <div class="leaderboard-name">${topPerformer.name}</div>
+                                    <div class="leaderboard-meta"><i class="fas fa-eye"></i> Топ по просмотрам</div>
+                                </div>
+                                <div class="leaderboard-value" style="color: var(--success);">${formatNum(topPerformer.views)}</div>
+                            </div>
+                            ` : ''}
+                            ${topEngager && topEngager.name !== topPerformer?.name ? `
+                            <div class="leaderboard-item" onclick="loadBloggerDetail('${topEngager.name}')" style="cursor: pointer;">
+                                <div class="leaderboard-rank silver">2</div>
+                                <div class="leaderboard-info">
+                                    <div class="leaderboard-name">${topEngager.name}</div>
+                                    <div class="leaderboard-meta"><i class="fas fa-heart"></i> Топ по engagement</div>
+                                </div>
+                                <div class="leaderboard-value" style="color: var(--accent-purple);">${topEngager.engagement}%</div>
+                            </div>
+                            ` : ''}
+                            ${topAvgPerformer && topAvgPerformer.name !== topPerformer?.name && topAvgPerformer.name !== topEngager?.name ? `
+                            <div class="leaderboard-item" onclick="loadBloggerDetail('${topAvgPerformer.name}')" style="cursor: pointer;">
+                                <div class="leaderboard-rank bronze">3</div>
+                                <div class="leaderboard-info">
+                                    <div class="leaderboard-name">${topAvgPerformer.name}</div>
+                                    <div class="leaderboard-meta"><i class="fas fa-chart-line"></i> Топ по ср. просмотрам</div>
+                                </div>
+                                <div class="leaderboard-value" style="color: var(--accent-blue);">${formatNum(topAvgPerformer.avg_views || 0)}</div>
+                            </div>
+                            ` : ''}
+                            ${bottomPerformer && bloggers.length > 2 && bottomPerformer.name !== topPerformer?.name ? `
+                            <div class="leaderboard-item" onclick="loadBloggerDetail('${bottomPerformer.name}')" style="cursor: pointer;">
+                                <div class="leaderboard-rank normal">${bloggers.length}</div>
+                                <div class="leaderboard-info">
+                                    <div class="leaderboard-name">${bottomPerformer.name}</div>
+                                    <div class="leaderboard-meta"><i class="fas fa-seedling"></i> Потенциал роста</div>
+                                </div>
+                                <div class="leaderboard-value" style="color: var(--text-muted);">${formatNum(bottomPerformer.views)}</div>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <!-- Content Analysis Block - Extended -->
+                    <div class="metric-block">
+                        <div class="metric-block-title"><i class="fas fa-video"></i> Контент анализ</div>
+                        <div class="metric-row">
+                            <span class="metric-name">Всего видео</span>
+                            <span class="metric-value neutral">${totalVideos}</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">YouTube видео</span>
+                            <span class="metric-value" style="color: var(--youtube);">${ytVideos} (${totalVideos > 0 ? Math.round(ytVideos/totalVideos*100) : 0}%)</span>
+                        </div>
+                        <div class="metric-row">
+                            <span class="metric-name">TikTok видео</span>
+                            <span class="metric-value" style="color: var(--tiktok);">${ttVideos} (${totalVideos > 0 ? Math.round(ttVideos/totalVideos*100) : 0}%)</span>
+                        </div>
+                        <div style="margin-top: 12px;">
+                            <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 6px;">Распределение контента</div>
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: ${totalVideos > 0 ? Math.round(ytVideos/totalVideos*100) : 50}%; background: linear-gradient(90deg, var(--youtube) 0%, var(--tiktok) 100%);"></div>
+                            </div>
+                        </div>
+                        <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);">
+                            <div class="metric-row">
+                                <span class="metric-name">Content Efficiency</span>
+                                <span class="metric-value ${contentEfficiency > 5 ? 'good' : 'neutral'}">${contentEfficiency}%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Charts -->
+                <div class="charts-row">
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <span class="chart-title">Engagement по блогерам</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chartEngagement"></canvas>
+                        </div>
+                    </div>
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <span class="chart-title">Эффективность (Лайки vs Просмотры)</span>
+                        </div>
+                        <div class="chart-container">
+                            <canvas id="chartEfficiency"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Blogger Rankings Table -->
+                <div class="table-card">
+                    <div class="table-header">
+                        <span class="table-title">Рейтинг блогеров по метрикам</span>
+                    </div>
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Блогер</th>
+                                <th>Просмотры</th>
+                                <th>Engagement</th>
+                                <th>Ср. просмотры</th>
+                                <th>YT доля</th>
+                                <th>TT доля</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${sortedByViews.map((b, i) => {
+                                const ytShare = b.views > 0 ? Math.round(b.youtube_views / b.views * 100) : 0;
+                                const ttShare = b.views > 0 ? Math.round(b.tiktok_views / b.views * 100) : 0;
+                                return `
+                                <tr>
+                                    <td><span style="color: ${i < 3 ? 'var(--accent-orange)' : 'var(--text-muted)'}; font-weight: 600;">#${i + 1}</span></td>
+                                    <td>
+                                        <div style="display: flex; align-items: center; gap: 10px;">
+                                            <div class="blogger-avatar" style="width: 28px; height: 28px; font-size: 11px; background: ${colors[i % colors.length]};">${b.name.charAt(0)}</div>
+                                            <strong>${b.name}</strong>
+                                        </div>
+                                    </td>
+                                    <td>${formatNum(b.views)}</td>
+                                    <td><span class="metric-value ${b.engagement > 5 ? 'good' : b.engagement > 2 ? 'warning' : ''}">${b.engagement}%</span></td>
+                                    <td>${formatNum(b.avg_views || 0)}</td>
+                                    <td><span style="color: var(--youtube);">${ytShare}%</span></td>
+                                    <td><span style="color: var(--tiktok);">${ttShare}%</span></td>
+                                </tr>
+                            `}).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            renderMetricsCharts(bloggers);
+        }
+
+        function renderMetricsCharts(bloggers) {
+            Object.values(charts).forEach(c => c.destroy());
+            charts = {};
+
+            // Engagement bar chart
+            charts.engagement = new Chart(document.getElementById('chartEngagement'), {
+                type: 'bar',
+                data: {
+                    labels: bloggers.map(b => b.name),
+                    datasets: [{
+                        label: 'Engagement %',
+                        data: bloggers.map(b => b.engagement),
+                        backgroundColor: bloggers.map(b => b.engagement > 5 ? '#3fb950' : b.engagement > 2 ? '#d29922' : '#f85149'),
+                        borderRadius: 4,
+                        barThickness: 32
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#30363d' },
+                            ticks: { color: '#8b949e', font: { size: 11 }, callback: v => v + '%' }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#8b949e', font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+
+            // Scatter chart - views vs likes
+            charts.efficiency = new Chart(document.getElementById('chartEfficiency'), {
+                type: 'scatter',
+                data: {
+                    datasets: [{
+                        label: 'Блогеры',
+                        data: bloggers.map(b => ({ x: b.views, y: b.likes, name: b.name })),
+                        backgroundColor: bloggers.map((_, i) => colors[i % colors.length]),
+                        pointRadius: 10,
+                        pointHoverRadius: 12
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: ctx => `${ctx.raw.name}: ${formatNum(ctx.raw.x)} views, ${formatNum(ctx.raw.y)} likes`
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Лайки', color: '#8b949e' },
+                            grid: { color: '#30363d' },
+                            ticks: { color: '#8b949e', font: { size: 11 } }
+                        },
+                        x: {
+                            beginAtZero: true,
+                            title: { display: true, text: 'Просмотры', color: '#8b949e' },
+                            grid: { color: '#30363d' },
+                            ticks: { color: '#8b949e', font: { size: 11 } }
+                        }
+                    }
+                }
+            });
+        }
+
+        function filterMetrics(type, value) {
+            metricsFilter[type] = value;
+            showMetrics();
+        }
+
+        // ============ TREND WATCH ============
+
+        let trendData = null;
+
+        async function showTrendWatch() {
+            currentView = 'trends';
+            setActiveNav('trends');
+            document.getElementById('pageTitle').textContent = 'Trend Watch';
+            currentBlogger = null;
+
+            // Показываем загрузку
+            document.getElementById('mainContent').innerHTML = `
+                <div class="empty-trends">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <p>Загрузка данных о трендах...</p>
+                </div>
+            `;
+
+            try {
+                // Загружаем данные параллельно
+                const [analysisRes, sourcesRes, statsRes, recentRes] = await Promise.all([
+                    fetch(`${API}/api/trends/analyze`),
+                    fetch(`${API}/api/trends/sources`),
+                    fetch(`${API}/api/trends/stats`),
+                    fetch(`${API}/api/trends/recent?limit=30`)
+                ]);
+
+                const analysis = await analysisRes.json();
+                const sources = await sourcesRes.json();
+                const stats = await statsRes.json();
+                const recentVideos = await recentRes.json();
+
+                // Сохраняем trending_topics между перезагрузками
+                const prevTopics = trendData?.trending_topics || [];
+                trendData = { analysis, sources, stats, recentVideos, trending_topics: prevTopics };
+                renderTrendWatch();
+
+            } catch (e) {
+                document.getElementById('mainContent').innerHTML = `
+                    <div class="empty-trends">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Ошибка загрузки данных о трендах</p>
+                        <button class="btn btn-primary" onclick="showTrendWatch()">Повторить</button>
+                    </div>
+                `;
+            }
+        }
+
+        // Хелпер для отображения потенциала
+        function getPotentialBadge(potential, viralScore) {
+            const badges = {
+                'viral': { text: 'Вирусное', color: '#ff4757', icon: 'fire' },
+                'high': { text: 'Высокий', color: '#ffa502', icon: 'arrow-up' },
+                'medium': { text: 'Средний', color: '#2ed573', icon: 'chart-line' },
+                'growing': { text: 'Растёт', color: '#1e90ff', icon: 'seedling' },
+                'low': { text: 'Низкий', color: '#747d8c', icon: 'minus' }
+            };
+            const b = badges[potential] || badges['low'];
+            return `<span style="background: ${b.color}20; color: ${b.color}; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 600;">
+                <i class="fas fa-${b.icon}"></i> ${b.text} (${viralScore || 0})
+            </span>`;
+        }
+
+        function renderTrendWatch() {
+            const { analysis, sources, stats, recentVideos, trending_topics } = trendData;
+
+            // Собираем трендовые темы из разных источников
+            let topics = trending_topics || analysis?.potential_trends || [];
+
+            // Если нет готовых тем, генерируем из recentVideos
+            if (topics.length === 0 && recentVideos && recentVideos.length > 0) {
+                const hashtagCounts = {};
+                recentVideos.forEach(v => {
+                    (v.hashtags || []).forEach(tag => {
+                        const t = tag.toLowerCase();
+                        if (!hashtagCounts[t]) {
+                            hashtagCounts[t] = { count: 0, views: 0, engagement: 0 };
+                        }
+                        hashtagCounts[t].count++;
+                        hashtagCounts[t].views += v.views || 0;
+                        hashtagCounts[t].engagement += v.engagement_rate || 0;
+                    });
+                });
+                topics = Object.entries(hashtagCounts)
+                    .filter(([_, data]) => data.count >= 2)
+                    .map(([tag, data]) => ({
+                        hashtag: tag,
+                        video_count: data.count,
+                        total_views: data.views,
+                        avg_engagement: (data.engagement / data.count).toFixed(1)
+                    }))
+                    .sort((a, b) => b.total_views - a.total_views)
+                    .slice(0, 10);
+            }
+
+            document.getElementById('mainContent').innerHTML = `
+                <!-- Заголовок статистики -->
+                <div class="trend-header">
+                    <div class="trend-stat-card">
+                        <div class="trend-stat-value">${stats.videos_tracked || 0}</div>
+                        <div class="trend-stat-label">Видео в базе</div>
+                    </div>
+                    <div class="trend-stat-card">
+                        <div class="trend-stat-value">${stats.total_snapshots || 0}</div>
+                        <div class="trend-stat-label">Снимков</div>
+                    </div>
+                    <div class="trend-stat-card">
+                        <div class="trend-stat-value">${recentVideos?.length || 0}</div>
+                        <div class="trend-stat-label">Найдено видео</div>
+                    </div>
+                    <div class="trend-stat-card">
+                        <div class="trend-stat-value">${recentVideos?.filter(v => v.potential === 'viral' || v.potential === 'high').length || 0}</div>
+                        <div class="trend-stat-label">С потенциалом</div>
+                    </div>
+                </div>
+
+                <div class="charts-row">
+                    <!-- Поиск трендов -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <span class="chart-title"><i class="fas fa-brain"></i> Алгоритмический анализ</span>
+                        </div>
+                        <div style="padding: 20px; text-align: center;">
+                            <p style="color: var(--text-secondary); margin-bottom: 12px; font-size: 12px;">
+                                Анализ метрик: engagement rate, velocity, views/subscriber
+                            </p>
+                            <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 11px;">
+                                Tier 1: US, UK, CA, AU, DE
+                            </p>
+                            <button class="btn btn-primary" id="discoverBtn" onclick="discoverTrends()" style="padding: 12px 24px;">
+                                <i class="fas fa-search"></i> Найти тренды
+                            </button>
+                            <div style="margin-top: 16px; font-size: 10px; color: var(--text-muted);">
+                                <div><i class="fas fa-check"></i> Полные метрики каждого видео</div>
+                                <div><i class="fas fa-check"></i> Сравнение с бенчмарками</div>
+                                <div><i class="fas fa-check"></i> Анализ популярных каналов</div>
+                            </div>
+                            <div id="discoverStatus" style="margin-top: 16px; font-size: 12px; color: var(--text-muted);"></div>
+                        </div>
+                    </div>
+
+                    <!-- Трендовые темы -->
+                    <div class="chart-card">
+                        <div class="chart-header">
+                            <span class="chart-title"><i class="fas fa-hashtag"></i> Трендовые темы</span>
+                            <span style="font-size: 11px; color: var(--text-muted);">${topics.length} тем</span>
+                        </div>
+                        <div style="max-height: 350px; overflow-y: auto; padding: 12px;">
+                            ${topics.length > 0 ? topics.map((t, i) => `
+                                <div class="trend-group" style="padding: 10px; margin-bottom: 8px; background: var(--bg-secondary); border-radius: 8px; display: flex; align-items: center; gap: 12px;">
+                                    <div style="width: 24px; height: 24px; background: var(--primary); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 600;">
+                                        ${i + 1}
+                                    </div>
+                                    <div style="flex: 1;">
+                                        <div style="color: var(--primary); font-weight: 600; font-size: 13px;">
+                                            #${t.hashtag || t.key || t.tag}
+                                        </div>
+                                        <div style="font-size: 11px; color: var(--text-muted); margin-top: 2px;">
+                                            ${t.video_count || t.videos_count || 0} видео • ${formatNum(t.total_views || 0)} просм.
+                                            ${t.avg_engagement ? ` • ${t.avg_engagement}% вовлеч.` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `).join('') : '<div style="color: var(--text-muted); font-size: 12px; text-align: center; padding: 30px;"><i class="fas fa-hashtag" style="font-size: 24px; opacity: 0.3; display: block; margin-bottom: 12px;"></i>Нажмите "Найти тренды"<br>для определения популярных тем</div>'}
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Потенциально вирусные видео -->
+                <div class="table-card" style="margin-top: 16px;">
+                    <div class="table-header">
+                        <span class="table-title"><i class="fas fa-fire"></i> Потенциально популярные</span>
+                        <span style="font-size: 12px; color: var(--text-muted);">Отсортировано по вирусному потенциалу</span>
+                    </div>
+                    <div style="padding: 16px; max-height: 600px; overflow-y: auto;">
+                        ${recentVideos && recentVideos.length > 0 ? recentVideos
+                            .sort((a, b) => (b.viral_score || 0) - (a.viral_score || 0))
+                            .map((v, i) => `
+                            <div class="rising-card" style="cursor: pointer;" onclick="window.open('${v.video_url}', '_blank')">
+                                <div class="rising-rank" style="background: ${v.potential === 'viral' ? '#ff4757' : v.potential === 'high' ? '#ffa502' : 'var(--primary)'};">${i + 1}</div>
+                                <div class="rising-info" style="flex: 1;">
+                                    <div class="rising-title">${v.title || 'Без названия'}</div>
+                                    <div class="rising-meta" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                                        <span class="platform-tag platform-${v.platform?.toLowerCase() || 'youtube'}">
+                                            <i class="fab fa-${v.platform?.toLowerCase() || 'youtube'}"></i> ${v.platform || 'YouTube'}
+                                        </span>
+                                        ${getPotentialBadge(v.potential, v.viral_score)}
+                                        ${v.category ? `<span style="font-size: 10px; color: var(--text-muted);">${v.category}</span>` : ''}
+                                    </div>
+                                    <div style="margin-top: 4px; font-size: 11px; color: var(--text-muted);">
+                                        ${v.uploader ? `<i class="fas fa-user"></i> ${v.uploader}` : ''}
+                                        ${v.hashtags && v.hashtags.length > 0 ? ` • ${v.hashtags.slice(0, 3).map(h => '#' + h).join(' ')}` : ''}
+                                    </div>
+                                </div>
+                                <div class="rising-stats">
+                                    <div class="rising-stat">
+                                        <div class="rising-stat-value">${formatNum(v.views)}</div>
+                                        <div class="rising-stat-label">просм.</div>
+                                    </div>
+                                    <div class="rising-stat">
+                                        <div class="rising-stat-value" style="color: ${(v.engagement_rate || 0) >= 5 ? 'var(--success)' : 'inherit'};">
+                                            ${v.engagement_rate || 0}%
+                                        </div>
+                                        <div class="rising-stat-label">вовлеч.</div>
+                                    </div>
+                                    <div class="rising-stat">
+                                        <div class="rising-stat-value">${formatNum(v.likes)}</div>
+                                        <div class="rising-stat-label">лайков</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `).join('') : `
+                            <div class="empty-trends">
+                                <i class="fas fa-search"></i>
+                                <p>Нажмите "Найти тренды" для поиска вирусного контента</p>
+                                <p style="font-size: 12px;">Система проанализирует YouTube и TikTok по Tier 1 странам</p>
+                            </div>
+                        `}
+                    </div>
+                </div>
+
+            `;
+        }
+
+        async function addTrendSource() {
+            const url = document.getElementById('sourceUrl').value.trim();
+            const name = document.getElementById('sourceName').value.trim();
+
+            if (!url) {
+                showToast('Введите URL', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/api/trends/sources`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, name })
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+
+                showToast('Источник добавлен!', 'success');
+                document.getElementById('sourceUrl').value = '';
+                document.getElementById('sourceName').value = '';
+                showTrendWatch();
+
+            } catch (e) {
+                showToast('Ошибка добавления', 'error');
+            }
+        }
+
+        async function removeTrendSource(url) {
+            if (!confirm('Удалить этот источник?')) return;
+
+            try {
+                const res = await fetch(`${API}/api/trends/sources`, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url })
+                });
+                const data = await res.json();
+
+                if (data.success) {
+                    showToast('Источник удалён', 'success');
+                    showTrendWatch();
+                }
+            } catch (e) {
+                showToast('Ошибка удаления', 'error');
+            }
+        }
+
+        async function collectTrendData() {
+            showToast('Сбор данных...', 'success');
+
+            try {
+                const res = await fetch(`${API}/api/trends/collect`, { method: 'POST' });
+                const data = await res.json();
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+
+                showToast(`Собрано ${data.collected} записей!`, 'success');
+                showTrendWatch();
+
+            } catch (e) {
+                showToast('Ошибка сбора данных', 'error');
+            }
+        }
+
+        async function discoverTrends() {
+            const btn = document.getElementById('discoverBtn');
+            const status = document.getElementById('discoverStatus');
+
+            btn.classList.add('loading');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Анализ...';
+
+            // Показываем прогресс-бар
+            status.innerHTML = `
+                <div style="text-align: left;">
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
+                        <span id="progressMessage">Инициализация...</span>
+                        <span id="progressPercent">0%</span>
+                    </div>
+                    <div style="background: var(--bg-tertiary); border-radius: 4px; height: 8px; overflow: hidden;">
+                        <div id="progressBar" style="width: 0%; height: 100%; background: linear-gradient(90deg, var(--primary), var(--accent-purple)); transition: width 0.3s;"></div>
+                    </div>
+                    <div id="progressDetails" style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
+                        Этап 1 из 6 • Найдено видео: 0
+                    </div>
+                </div>
+            `;
+
+            try {
+                // Используем SSE для получения прогресса в реальном времени
+                const eventSource = new EventSource(`${API}/api/trends/discover-stream`);
+
+                eventSource.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+
+                    if (data.type === 'progress') {
+                        // Обновляем прогресс-бар
+                        document.getElementById('progressBar').style.width = data.percent + '%';
+                        document.getElementById('progressPercent').textContent = data.percent + '%';
+                        document.getElementById('progressMessage').textContent = data.message;
+                        document.getElementById('progressDetails').innerHTML = `
+                            Этап ${data.step} из ${data.total} • Найдено видео: ${data.videos_found}
+                        `;
+                    } else if (data.type === 'complete') {
+                        eventSource.close();
+
+                        const result = data.result;
+                        const viralCount = result.viral_candidates?.length || 0;
+                        const topicsCount = result.trending_topics?.length || 0;
+
+                        showToast(`Анализ завершён! ${result.total} видео, ${viralCount} с потенциалом`, 'success');
+
+                        status.innerHTML = `
+                            <div style="text-align: center;">
+                                <span style="color: var(--success);"><i class="fas fa-check-circle"></i> Алгоритмический анализ завершён</span>
+                                <div style="margin-top: 8px; font-size: 11px;">
+                                    Проанализировано: ${result.total} •
+                                    С потенциалом: ${viralCount} •
+                                    Трендовых тем: ${topicsCount}
+                                </div>
+                            </div>
+                        `;
+
+                        // Сохраняем trending_topics для отображения
+                        if (trendData) {
+                            trendData.trending_topics = result.trending_topics;
+                        }
+
+                        // Перезагружаем данные
+                        setTimeout(() => showTrendWatch(), 1000);
+
+                        btn.classList.remove('loading');
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-search"></i> Найти тренды';
+                    } else if (data.type === 'error') {
+                        eventSource.close();
+                        showToast('Ошибка: ' + data.error, 'error');
+                        status.innerHTML = `<span style="color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> ${data.error}</span>`;
+
+                        btn.classList.remove('loading');
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-search"></i> Найти тренды';
+                    }
+                };
+
+                eventSource.onerror = function() {
+                    eventSource.close();
+                    // Fallback на обычный запрос если SSE не работает
+                    discoverTrendsFallback();
+                };
+
+            } catch (e) {
+                discoverTrendsFallback();
+            }
+        }
+
+        // Fallback функция без SSE
+        async function discoverTrendsFallback() {
+            const btn = document.getElementById('discoverBtn');
+            const status = document.getElementById('discoverStatus');
+
+            status.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Алгоритмический анализ (может занять несколько минут)...';
+
+            try {
+                const res = await fetch(`${API}/api/trends/discover`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ max_per_source: 5 })
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    status.innerHTML = `<span style="color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> ${data.error}</span>`;
+                    return;
+                }
+
+                const viralCount = data.viral_candidates?.length || 0;
+                showToast(`Проанализировано ${data.collected || data.total} видео!`, 'success');
+                status.innerHTML = `
+                    <span style="color: var(--success);"><i class="fas fa-check-circle"></i> Проанализировано ${data.collected || data.total} видео</span>
+                `;
+
+                setTimeout(() => showTrendWatch(), 1500);
+
+            } catch (e) {
+                showToast('Ошибка анализа', 'error');
+                status.innerHTML = '<span style="color: var(--danger);"><i class="fas fa-exclamation-triangle"></i> Ошибка</span>';
+            } finally {
+                btn.classList.remove('loading');
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-search"></i> Найти тренды';
+            }
+        }
+
+        // ============ CRUD ============
+
+        async function handleAddBlogger(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('inputName').value.trim();
+            const youtube = document.getElementById('inputYoutube').value.trim();
+            const tiktok = document.getElementById('inputTiktok').value.trim();
+            const instagram = document.getElementById('inputInstagram')?.value.trim() || '';
+
+            if (!name || (!youtube && !tiktok && !instagram)) {
+                showToast('Заполните имя и хотя бы одну ссылку', 'error');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/api/bloggers`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, youtube, tiktok, instagram })
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+
+                showToast(`${name} добавлен!`, 'success');
+                closeAddModal();
+                document.getElementById('addForm').reset();
+                await reloadCurrentView();
+            } catch (e) {
+                showToast('Ошибка добавления: ' + e.message, 'error');
+            }
+        }
+
+        async function confirmDelete(name) {
+            if (!confirm(`Удалить блогера "${name}"?`)) return;
+
+            try {
+                const res = await fetch(`${API}/api/bloggers/${encodeURIComponent(name)}`, { method: 'DELETE' });
+                const data = await res.json();
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+
+                showToast(`${name} удалён`, 'success');
+                await reloadCurrentView();
+            } catch (e) {
+                showToast('Ошибка', 'error');
+            }
+        }
+
+        // ============ UI HELPERS ============
+
+        let currentView = 'overview';
+        let configBloggers = []; // Блогеры из config.json
+
+        async function reloadCurrentView() {
+            // Загружаем параллельно stats и список блогеров из конфига
+            const [statsRes, bloggersRes] = await Promise.all([
+                fetch(`${API}/api/stats`),
+                fetch(`${API}/api/bloggers`)
+            ]);
+
+            globalStats = await statsRes.json();
+            configBloggers = await bloggersRes.json();
+
+            // Мёржим: блогеры из конфига + статистика (если есть)
+            const statsMap = {};
+            (globalStats.bloggers || []).forEach(b => statsMap[b.name] = b);
+
+            globalStats.bloggers = configBloggers.map(cfg => {
+                const stats = statsMap[cfg.name] || {};
+                return {
+                    name: cfg.name,
+                    youtube: cfg.youtube || '',
+                    tiktok: cfg.tiktok || '',
+                    instagram: cfg.instagram || '',
+                    videos: stats.videos || 0,
+                    views: stats.views || 0,
+                    likes: stats.likes || 0,
+                    comments: stats.comments || 0,
+                    youtube_views: stats.youtube_views || 0,
+                    tiktok_views: stats.tiktok_views || 0,
+                    avg_views: stats.avg_views || 0,
+                    engagement: stats.engagement || 0
+                };
+            });
+
+            updateSidebar();
+
+            // Reload current view
+            switch (currentView) {
+                case 'bloggers':
+                    showBloggersList();
+                    break;
+                case 'metrics':
+                    showMetrics();
+                    break;
+                case 'trends':
+                    showTrendWatch();
+                    break;
+                default:
+                    renderOverview();
+                    break;
+            }
+            updateLastRefresh();
+        }
+
+        function showOverview() {
+            currentView = 'overview';
+            currentBlogger = null;
+            loadOverview();
+        }
+
+        function openAddModal() {
+            document.getElementById('addModal').classList.add('active');
+        }
+
+        function closeAddModal() {
+            document.getElementById('addModal').classList.remove('active');
+        }
+
+        function setLoading(show) {
+            document.getElementById('loadingOverlay').classList.toggle('active', show);
+        }
+
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = toast.querySelector('i');
+            document.getElementById('toastMsg').textContent = msg;
+            toast.className = `toast ${type}`;
+            icon.className = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+            toast.classList.add('active');
+            setTimeout(() => toast.classList.remove('active'), 3000);
+        }
+
+        function formatNum(n) {
+            if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return n?.toString() || '0';
+        }
+
+        function updateLastRefresh() {
+            const now = new Date();
+            document.getElementById('updateTime').innerHTML = `
+                <i class="fas fa-clock"></i>
+                <span>${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}</span>
+            `;
+        }
+
+        // Close modal on backdrop click
+        document.getElementById('addModal').addEventListener('click', e => {
+            if (e.target.id === 'addModal') closeAddModal();
+        });
+    </script>
+</body>
+</html>

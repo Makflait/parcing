@@ -1,0 +1,111 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: blogger_db
+    environment:
+      POSTGRES_DB: blogger_analytics
+      POSTGRES_USER: blogger_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secure_password_change_me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U blogger_user -d blogger_analytics"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Redis Cache & Queue
+  redis:
+    image: redis:7-alpine
+    container_name: blogger_redis
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Flask Web Application
+  web:
+    build: .
+    container_name: blogger_web
+    environment:
+      - DATABASE_URL=postgresql://blogger_user:${DB_PASSWORD:-secure_password_change_me}@db:5432/blogger_analytics
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
+      - FLASK_ENV=${FLASK_ENV:-production}
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery Worker for background tasks
+  worker:
+    build: .
+    container_name: blogger_worker
+    command: celery -A web.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      - DATABASE_URL=postgresql://blogger_user:${DB_PASSWORD:-secure_password_change_me}@db:5432/blogger_analytics
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
+    volumes:
+      - ./logs:/app/logs
+      - ./data:/app/data
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Celery Beat for scheduled tasks
+  beat:
+    build: .
+    container_name: blogger_beat
+    command: celery -A web.celery_app beat --loglevel=info
+    environment:
+      - DATABASE_URL=postgresql://blogger_user:${DB_PASSWORD:-secure_password_change_me}@db:5432/blogger_analytics
+      - REDIS_URL=redis://redis:6379/0
+      - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
+    volumes:
+      - ./logs:/app/logs
+    depends_on:
+      - worker
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy (optional, for production)
+  nginx:
+    image: nginx:alpine
+    container_name: blogger_nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./web/static:/app/static:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - web
+    restart: unless-stopped
+    profiles:
+      - production
+
+volumes:
+  postgres_data:
+  redis_data:
