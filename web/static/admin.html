@@ -1,0 +1,822 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel - Blogger Analytics</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border: #30363d;
+            --text-primary: #c9d1d9;
+            --text-secondary: #8b949e;
+            --accent: #58a6ff;
+            --accent-hover: #79b8ff;
+            --success: #3fb950;
+            --warning: #d29922;
+            --danger: #f85149;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--accent), #a371f7);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .header-title {
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .header-title span {
+            color: var(--danger);
+            font-size: 12px;
+            margin-left: 8px;
+            padding: 2px 8px;
+            background: rgba(248, 81, 73, 0.1);
+            border-radius: 4px;
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-secondary);
+            font-size: 14px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border);
+        }
+
+        .btn-danger {
+            background: rgba(248, 81, 73, 0.1);
+            color: var(--danger);
+            border: 1px solid var(--danger);
+        }
+
+        .btn-danger:hover {
+            background: rgba(248, 81, 73, 0.2);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: #fff;
+        }
+
+        /* Main */
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+
+        /* Stats Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stat-card-title {
+            font-size: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .stat-card-value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .stat-card-value.primary { color: var(--accent); }
+        .stat-card-value.success { color: var(--success); }
+        .stat-card-value.warning { color: var(--warning); }
+        .stat-card-value.danger { color: var(--danger); }
+
+        /* Table Card */
+        .table-card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            overflow: hidden;
+        }
+
+        .table-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .table-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px 20px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+
+        th {
+            background: var(--bg-tertiary);
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+        }
+
+        tr:hover {
+            background: var(--bg-tertiary);
+        }
+
+        .badge {
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .badge-admin {
+            background: rgba(248, 81, 73, 0.1);
+            color: var(--danger);
+        }
+
+        .badge-user {
+            background: rgba(88, 166, 255, 0.1);
+            color: var(--accent);
+        }
+
+        .badge-free {
+            background: rgba(139, 148, 158, 0.1);
+            color: var(--text-secondary);
+        }
+
+        .badge-pro {
+            background: rgba(63, 185, 80, 0.1);
+            color: var(--success);
+        }
+
+        .badge-enterprise {
+            background: rgba(163, 113, 247, 0.1);
+            color: #a371f7;
+        }
+
+        .badge-active {
+            background: rgba(63, 185, 80, 0.1);
+            color: var(--success);
+        }
+
+        .badge-inactive {
+            background: rgba(248, 81, 73, 0.1);
+            color: var(--danger);
+        }
+
+        .actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .action-btn {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .action-btn:hover {
+            background: var(--border);
+            color: var(--text-primary);
+        }
+
+        .action-btn.danger:hover {
+            background: rgba(248, 81, 73, 0.1);
+            color: var(--danger);
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-backdrop.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            width: 100%;
+            max-width: 500px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border: none;
+            border-radius: 6px;
+            background: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .modal-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .modal-body {
+            padding: 20px;
+        }
+
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .form-input, .form-select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
+        }
+
+        .form-input:focus, .form-select:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            padding: 12px 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success { border-color: var(--success); }
+        .toast.success i { color: var(--success); }
+        .toast.error { border-color: var(--danger); }
+        .toast.error i { color: var(--danger); }
+
+        /* Empty state */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-state i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* Loading */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border);
+            border-top-color: var(--accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <div class="header-left">
+            <div class="logo"><i class="fas fa-chart-line"></i></div>
+            <h1 class="header-title">Admin Panel <span>ADMIN</span></h1>
+        </div>
+        <div class="header-right">
+            <div class="user-info">
+                <i class="fas fa-user-shield"></i>
+                <span id="adminName">Admin</span>
+            </div>
+            <a href="/" class="btn btn-secondary">
+                <i class="fas fa-home"></i> К дашборду
+            </a>
+            <button class="btn btn-secondary" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Выход
+            </button>
+        </div>
+    </header>
+
+    <main class="main">
+        <!-- Stats -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card">
+                <div class="stat-card-title">Всего пользователей</div>
+                <div class="stat-card-value primary" id="statTotal">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-title">Активных</div>
+                <div class="stat-card-value success" id="statActive">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-title">Pro подписки</div>
+                <div class="stat-card-value warning" id="statPro">-</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-card-title">Блогеров</div>
+                <div class="stat-card-value" id="statBloggers">-</div>
+            </div>
+        </div>
+
+        <!-- Users Table -->
+        <div class="table-card">
+            <div class="table-header">
+                <span class="table-title"><i class="fas fa-users"></i> Пользователи</span>
+                <button class="btn btn-primary" onclick="openAddModal()">
+                    <i class="fas fa-plus"></i> Добавить
+                </button>
+            </div>
+            <div id="usersTable">
+                <div class="loading"><div class="spinner"></div></div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Add/Edit User Modal -->
+    <div class="modal-backdrop" id="userModal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title" id="modalTitle">Добавить пользователя</span>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <form id="userForm" onsubmit="saveUser(event)">
+                <div class="modal-body">
+                    <input type="hidden" id="userId">
+                    <div class="form-group">
+                        <label class="form-label">Email *</label>
+                        <input type="email" class="form-input" id="userEmail" required>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Имя</label>
+                        <input type="text" class="form-input" id="userName">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Пароль <span id="pwdHint">(обязательно)</span></label>
+                        <input type="password" class="form-input" id="userPassword">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Роль</label>
+                        <select class="form-select" id="userRole">
+                            <option value="user">Пользователь</option>
+                            <option value="admin">Администратор</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">План</label>
+                        <select class="form-select" id="userPlan">
+                            <option value="free">Free</option>
+                            <option value="pro">Pro</option>
+                            <option value="enterprise">Enterprise</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Статус</label>
+                        <select class="form-select" id="userActive">
+                            <option value="1">Активен</option>
+                            <option value="0">Заблокирован</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Отмена</button>
+                    <button type="submit" class="btn btn-primary">Сохранить</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <i class="fas fa-check-circle"></i>
+        <span id="toastMsg"></span>
+    </div>
+
+    <script>
+        const API = '';
+        let currentUser = null;
+
+        // Auth
+        function getToken() {
+            return localStorage.getItem('access_token');
+        }
+
+        function authHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${getToken()}`
+            };
+        }
+
+        async function checkAuth() {
+            const token = getToken();
+            if (!token) {
+                window.location.href = '/login.html';
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API}/api/auth/me`, { headers: authHeaders() });
+                if (!res.ok) throw new Error('Unauthorized');
+
+                const data = await res.json();
+                if (data.user.role !== 'admin') {
+                    alert('Доступ запрещён');
+                    window.location.href = '/';
+                    return;
+                }
+
+                currentUser = data.user;
+                document.getElementById('adminName').textContent = data.user.name || data.user.email;
+                loadData();
+            } catch (e) {
+                localStorage.clear();
+                window.location.href = '/login.html';
+            }
+        }
+
+        function logout() {
+            localStorage.clear();
+            window.location.href = '/login.html';
+        }
+
+        // Data Loading
+        async function loadData() {
+            await Promise.all([loadStats(), loadUsers()]);
+        }
+
+        async function loadStats() {
+            try {
+                const res = await fetch(`${API}/api/admin/stats`, { headers: authHeaders() });
+                const data = await res.json();
+
+                document.getElementById('statTotal').textContent = data.users?.total || 0;
+                document.getElementById('statActive').textContent = data.users?.active || 0;
+                document.getElementById('statPro').textContent = (data.users?.by_plan?.pro || 0) + (data.users?.by_plan?.enterprise || 0);
+                document.getElementById('statBloggers').textContent = data.bloggers || 0;
+            } catch (e) {
+                console.error('Stats error:', e);
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const res = await fetch(`${API}/api/admin/users`, { headers: authHeaders() });
+                const data = await res.json();
+
+                if (!data.users || data.users.length === 0) {
+                    document.getElementById('usersTable').innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-users"></i>
+                            <p>Пользователей нет</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                document.getElementById('usersTable').innerHTML = `
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Пользователь</th>
+                                <th>Роль</th>
+                                <th>План</th>
+                                <th>Блогеров</th>
+                                <th>Статус</th>
+                                <th>Последний вход</th>
+                                <th>Действия</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${data.users.map(u => `
+                                <tr>
+                                    <td>
+                                        <div><strong>${u.name || u.email}</strong></div>
+                                        <div style="font-size: 12px; color: var(--text-secondary);">${u.email}</div>
+                                    </td>
+                                    <td><span class="badge badge-${u.role}">${u.role}</span></td>
+                                    <td><span class="badge badge-${u.plan}">${u.plan}</span></td>
+                                    <td>${u.bloggers_count || 0}</td>
+                                    <td><span class="badge badge-${u.is_active ? 'active' : 'inactive'}">${u.is_active ? 'Активен' : 'Заблокирован'}</span></td>
+                                    <td style="font-size: 12px; color: var(--text-secondary);">${u.last_login ? new Date(u.last_login).toLocaleString('ru') : 'Никогда'}</td>
+                                    <td>
+                                        <div class="actions">
+                                            <button class="action-btn" onclick="editUser(${u.id})" title="Редактировать">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            ${u.id !== currentUser.id ? `
+                                                <button class="action-btn danger" onclick="deleteUser(${u.id}, '${u.email}')" title="Удалить">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                            ` : ''}
+                                        </div>
+                                    </td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                `;
+            } catch (e) {
+                document.getElementById('usersTable').innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p>Ошибка загрузки</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Modal
+        let editingUserId = null;
+
+        function openAddModal() {
+            editingUserId = null;
+            document.getElementById('modalTitle').textContent = 'Добавить пользователя';
+            document.getElementById('pwdHint').textContent = '(обязательно)';
+            document.getElementById('userForm').reset();
+            document.getElementById('userModal').classList.add('active');
+        }
+
+        async function editUser(id) {
+            try {
+                const res = await fetch(`${API}/api/admin/users/${id}`, { headers: authHeaders() });
+                const data = await res.json();
+                const u = data.user;
+
+                editingUserId = id;
+                document.getElementById('modalTitle').textContent = 'Редактировать пользователя';
+                document.getElementById('pwdHint').textContent = '(оставьте пустым чтобы не менять)';
+                document.getElementById('userId').value = id;
+                document.getElementById('userEmail').value = u.email;
+                document.getElementById('userName').value = u.name || '';
+                document.getElementById('userPassword').value = '';
+                document.getElementById('userRole').value = u.role;
+                document.getElementById('userPlan').value = u.plan;
+                document.getElementById('userActive').value = u.is_active ? '1' : '0';
+                document.getElementById('userModal').classList.add('active');
+            } catch (e) {
+                showToast('Ошибка загрузки', 'error');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('userModal').classList.remove('active');
+            editingUserId = null;
+        }
+
+        async function saveUser(e) {
+            e.preventDefault();
+
+            const data = {
+                email: document.getElementById('userEmail').value,
+                name: document.getElementById('userName').value,
+                role: document.getElementById('userRole').value,
+                plan: document.getElementById('userPlan').value,
+                is_active: document.getElementById('userActive').value === '1'
+            };
+
+            const password = document.getElementById('userPassword').value;
+            if (password) data.password = password;
+
+            try {
+                let res;
+                if (editingUserId) {
+                    res = await fetch(`${API}/api/admin/users/${editingUserId}`, {
+                        method: 'PUT',
+                        headers: authHeaders(),
+                        body: JSON.stringify(data)
+                    });
+                } else {
+                    if (!password) {
+                        showToast('Пароль обязателен', 'error');
+                        return;
+                    }
+                    res = await fetch(`${API}/api/admin/users`, {
+                        method: 'POST',
+                        headers: authHeaders(),
+                        body: JSON.stringify(data)
+                    });
+                }
+
+                const result = await res.json();
+                if (result.error) {
+                    showToast(result.error, 'error');
+                    return;
+                }
+
+                showToast(editingUserId ? 'Пользователь обновлён' : 'Пользователь создан', 'success');
+                closeModal();
+                loadUsers();
+                loadStats();
+            } catch (e) {
+                showToast('Ошибка сохранения', 'error');
+            }
+        }
+
+        async function deleteUser(id, email) {
+            if (!confirm(`Удалить пользователя ${email}?`)) return;
+
+            try {
+                const res = await fetch(`${API}/api/admin/users/${id}`, {
+                    method: 'DELETE',
+                    headers: authHeaders()
+                });
+                const data = await res.json();
+
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    return;
+                }
+
+                showToast('Пользователь удалён', 'success');
+                loadUsers();
+                loadStats();
+            } catch (e) {
+                showToast('Ошибка удаления', 'error');
+            }
+        }
+
+        // Toast
+        function showToast(msg, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = toast.querySelector('i');
+            document.getElementById('toastMsg').textContent = msg;
+            toast.className = `toast ${type}`;
+            icon.className = type === 'success' ? 'fas fa-check-circle' : 'fas fa-exclamation-circle';
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Init
+        document.addEventListener('DOMContentLoaded', checkAuth);
+    </script>
+</body>
+</html>

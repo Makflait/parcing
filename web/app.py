@@ -132,6 +132,16 @@ def index():
     return send_from_directory('static', 'index.html')
 
 
+@app.route('/login.html')
+def login_page():
+    return send_from_directory('static', 'login.html')
+
+
+@app.route('/admin.html')
+def admin_page():
+    return send_from_directory('static', 'admin.html')
+
+
 @app.route('/static/<path:path>')
 def serve_static(path):
     return send_from_directory('static', path)

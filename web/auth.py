@@ -95,49 +95,11 @@ def get_current_user():
 
 @auth_bp.route('/register', methods=['POST'])
 def register():
-    """Регистрация нового пользователя"""
-    data = request.get_json()
-
-    if not data:
-        return jsonify({'error': 'No data provided'}), 400
-
-    email = data.get('email', '').strip().lower()
-    password = data.get('password', '')
-    name = data.get('name', '').strip()
-
-    if not email or not password:
-        return jsonify({'error': 'Email and password required'}), 400
-
-    if len(password) < 6:
-        return jsonify({'error': 'Password must be at least 6 characters'}), 400
-
-    # Проверить существование
-    if User.query.filter_by(email=email).first():
-        return jsonify({'error': 'Email already registered'}), 409
-
-    # Создать пользователя
-    user = User(
-        email=email,
-        password_hash=hash_password(password),
-        name=name or email.split('@')[0],
-        role='user',
-        plan='free'
-    )
-    db.session.add(user)
-    db.session.commit()
-
-    log_activity(user.id, 'register', {'email': email})
-
-    # Создать токены
-    access_token = create_access_token(identity=user.id)
-    refresh_token = create_refresh_token(identity=user.id)
-
+    """Регистрация отключена - доступ только через админку"""
     return jsonify({
-        'success': True,
-        'user': user.to_dict(),
-        'access_token': access_token,
-        'refresh_token': refresh_token
-    }), 201
+        'error': 'Registration disabled',
+        'message': 'Доступ к сервису только через администратора'
+    }), 403
 
 
 @auth_bp.route('/login', methods=['POST'])

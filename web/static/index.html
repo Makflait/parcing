@@ -1618,6 +1618,7 @@
         const API = '';
         let globalStats = null;
         let currentBlogger = null;
+        let configBloggers = []; // Блогеры из config.json
         let charts = {};
 
         // Colors for bloggers
@@ -3283,7 +3284,6 @@
         // ============ UI HELPERS ============
 
         let currentView = 'overview';
-        let configBloggers = []; // Блогеры из config.json
 
         async function reloadCurrentView() {
             // Загружаем параллельно stats и список блогеров из конфига
