@@ -37,6 +37,7 @@ if not DATABASE_URL and os.path.exists(os.path.join(BASE_DIR, 'data', 'blogger_a
 
 USE_DATABASE = DATABASE_URL is not None
 REQUIRE_AUTH = os.getenv('REQUIRE_AUTH', 'false').lower() == 'true'
+ENABLE_SCHEDULER = os.getenv('ENABLE_SCHEDULER', 'true').lower() == 'true'
 
 # Инициализация приложения
 app = Flask(__name__, static_folder='static')
