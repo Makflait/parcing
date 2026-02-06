@@ -44,6 +44,9 @@ services:
       - REQUIRE_AUTH=true
       - FLASK_ENV=${FLASK_ENV:-production}
       - ENABLE_SCHEDULER=false
+      - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@blogger-analytics.local}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin2026!}
+      - ADMIN_NAME=${ADMIN_NAME:-Admin}
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data

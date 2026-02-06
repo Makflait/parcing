@@ -66,6 +66,62 @@ if USE_DATABASE:
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
 
+    # Seed default accounts (admin + optional users)
+    try:
+        from web.database import db, User
+        from web.auth import hash_password
+    except ImportError:
+        from database import db, User
+        from auth import hash_password
+
+    def _seed_users():
+        admin_email = os.getenv('ADMIN_EMAIL', '').strip().lower()
+        admin_password = os.getenv('ADMIN_PASSWORD', '').strip()
+        admin_name = os.getenv('ADMIN_NAME', 'Admin').strip() or 'Admin'
+
+        with app.app_context():
+            if admin_email and admin_password:
+                exists = User.query.filter_by(email=admin_email).first()
+                if not exists:
+                    user = User(
+                        email=admin_email,
+                        password_hash=hash_password(admin_password),
+                        name=admin_name,
+                        role='admin',
+                        is_active=True
+                    )
+                    db.session.add(user)
+                    db.session.commit()
+
+            # Optional bulk users seed (JSON array)
+            seed_json = os.getenv('SEED_USERS_JSON', '').strip()
+            if seed_json:
+                try:
+                    users = json.loads(seed_json)
+                    if isinstance(users, list):
+                        for u in users:
+                            email = (u.get('email') or '').strip().lower()
+                            password = (u.get('password') or '').strip()
+                            name = (u.get('name') or email.split('@')[0] if email else '').strip()
+                            role = (u.get('role') or 'user').strip()
+                            if not email or not password:
+                                continue
+                            if User.query.filter_by(email=email).first():
+                                continue
+                            user = User(
+                                email=email,
+                                password_hash=hash_password(password),
+                                name=name,
+                                role=role if role in ['user', 'admin'] else 'user',
+                                is_active=True
+                            )
+                            db.session.add(user)
+                        db.session.commit()
+                except Exception:
+                    pass
+
+    _seed_users()
+
     # Инициализация Parser Service
     try:
         from web.parser_service import init_parser_service
