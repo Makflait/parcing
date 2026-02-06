@@ -19,7 +19,7 @@ class TikTokParser:
     """Парсер для получения данных с TikTok через yt-dlp"""
 
     def __init__(self, use_selenium=True):
-        pass
+        self.use_selenium = use_selenium
 
     def get_all_videos(self, profile_url: str, max_videos: int = 50) -> List[Dict]:
         """
@@ -132,6 +132,9 @@ class TikTokParser:
         videos = self.get_all_videos(profile_url, max_videos=1)
         return videos[0] if videos else None
 
+    def get_user_videos(self, profile_url: str, max_videos: int = 50) -> List[Dict]:
+        return self.get_all_videos(profile_url, max_videos=max_videos)
+
     def close(self):
         """Закрывает ресурсы (для совместимости)"""
-        pass
+        return

@@ -1,4 +1,5 @@
--- Blogger Analytics SaaS - PostgreSQL Schema
+-- Blogger Analytics - PostgreSQL Schema
+-- Соответствует моделям из web/database.py
 
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
@@ -7,27 +8,10 @@ CREATE TABLE IF NOT EXISTS users (
     password_hash VARCHAR(255) NOT NULL,
     name VARCHAR(255),
     role VARCHAR(50) DEFAULT 'user',
-    plan VARCHAR(50) DEFAULT 'free',
     created_at TIMESTAMP DEFAULT NOW(),
     last_login TIMESTAMP,
     is_active BOOLEAN DEFAULT TRUE
 );
-
--- User limits by plan
-CREATE TABLE IF NOT EXISTS user_limits (
-    id SERIAL PRIMARY KEY,
-    plan VARCHAR(50) UNIQUE NOT NULL,
-    max_bloggers INTEGER DEFAULT 5,
-    max_videos_per_day INTEGER DEFAULT 100,
-    trend_watch_enabled BOOLEAN DEFAULT FALSE,
-    api_rate_limit INTEGER DEFAULT 100
-);
-
-INSERT INTO user_limits (plan, max_bloggers, max_videos_per_day, trend_watch_enabled, api_rate_limit) VALUES
-('free', 5, 100, FALSE, 100),
-('pro', 50, 1000, TRUE, 1000),
-('enterprise', -1, -1, TRUE, -1)
-ON CONFLICT (plan) DO NOTHING;
 
 -- Bloggers table (multi-tenant)
 CREATE TABLE IF NOT EXISTS bloggers (
@@ -63,7 +47,7 @@ CREATE TABLE IF NOT EXISTS video_history (
     velocity REAL DEFAULT 0,
     recorded_at TIMESTAMP DEFAULT NOW(),
     hashtags JSONB DEFAULT '[]',
-    metadata JSONB DEFAULT '{}'
+    extra_data JSONB DEFAULT '{}'
 );
 
 CREATE INDEX IF NOT EXISTS idx_video_user ON video_history(user_id);
@@ -87,7 +71,7 @@ CREATE TABLE IF NOT EXISTS trend_videos (
     status VARCHAR(50) DEFAULT 'monitoring',
     hashtags JSONB DEFAULT '[]',
     topics JSONB DEFAULT '[]',
-    metadata JSONB DEFAULT '{}'
+    extra_data JSONB DEFAULT '{}'
 );
 
 CREATE INDEX IF NOT EXISTS idx_trend_status ON trend_videos(status);
@@ -149,14 +133,7 @@ CREATE TABLE IF NOT EXISTS activity_logs (
 CREATE INDEX IF NOT EXISTS idx_logs_user ON activity_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_logs_time ON activity_logs(created_at);
 
--- Create admin user (password: admin123 - CHANGE IN PRODUCTION!)
-INSERT INTO users (email, password_hash, name, role, plan) VALUES
-('admin@example.com', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewKyNiAYMyzJ/Iwe', 'Admin', 'admin', 'enterprise')
-ON CONFLICT (email) DO NOTHING;
-
--- Functions
-
--- Update updated_at timestamp
+-- Trigger: auto-update updated_at
 CREATE OR REPLACE FUNCTION update_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -165,7 +142,6 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
--- Trigger for bloggers
 DROP TRIGGER IF EXISTS bloggers_updated_at ON bloggers;
 CREATE TRIGGER bloggers_updated_at
     BEFORE UPDATE ON bloggers

@@ -179,11 +179,17 @@ class TrendWatcher:
         url = source['url']
 
         if platform == 'YouTube' and self.yt_parser:
-            videos = self.yt_parser.get_channel_videos(url, max_videos=20)
+            if hasattr(self.yt_parser, 'get_channel_videos'):
+                videos = self.yt_parser.get_channel_videos(url, max_videos=20)
+            else:
+                videos = self.yt_parser.get_all_videos(url, max_videos=20)
             return videos if videos else []
 
         elif platform == 'TikTok' and self.tt_parser:
-            videos = self.tt_parser.get_user_videos(url, max_videos=20)
+            if hasattr(self.tt_parser, 'get_user_videos'):
+                videos = self.tt_parser.get_user_videos(url, max_videos=20)
+            else:
+                videos = self.tt_parser.get_all_videos(url, max_videos=20)
             return videos if videos else []
 
         return []

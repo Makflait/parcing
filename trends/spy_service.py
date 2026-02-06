@@ -20,6 +20,11 @@ import json
 import re
 
 try:
+    from .db import TrendDB
+except Exception:
+    TrendDB = None
+
+try:
     import yt_dlp
     HAS_YTDLP = True
 except ImportError:
@@ -62,6 +67,11 @@ class TrendSpyService:
         db: SQLAlchemy db instance или None для standalone
         """
         self.db = db
+        if self.db is None and TrendDB is not None:
+            try:
+                self.db = TrendDB()
+            except Exception:
+                self.db = None
         self.yt_opts = {
             'quiet': True,
             'no_warnings': True,
@@ -72,8 +82,8 @@ class TrendSpyService:
 
     def discover_videos(self, max_per_source: int = 30) -> Dict:
         """
-        Фаза 1: Discovery
-        Находим новые видео из рекомендаций и поиска
+        ???????? 1: Discovery
+        ?????????????? ?????????? ?????????? ???? ???????????????????????? ?? ????????????
 
         Returns:
             {
@@ -102,7 +112,62 @@ class TrendSpyService:
         results['tiktok'] = tt_videos
 
         results['total'] = len(yt_videos) + len(tt_videos)
+        self._store_discovered(results['youtube'] + results['tiktok'])
         return results
+
+    def _store_discovered(self, videos: List[Dict]):
+        if not self.db:
+            return
+        for v in videos:
+            try:
+                self.db.record_video_snapshot(v)
+            except Exception:
+                continue
+
+    def _store_snapshot(self, video_url: str, metrics: Dict):
+        if not self.db or not metrics:
+            return
+        payload = {
+            'url': video_url,
+            'platform': metrics.get('platform', ''),
+            'title': metrics.get('title', ''),
+            'views': metrics.get('views', 0),
+            'likes': metrics.get('likes', 0),
+            'comments': metrics.get('comments', 0),
+            'shares': metrics.get('shares', 0),
+            'upload_date': metrics.get('upload_date', ''),
+            'hashtags': metrics.get('hashtags', []),
+            'sound_name': metrics.get('sound_name', ''),
+        }
+        try:
+            self.db.record_video_snapshot(payload)
+        except Exception:
+            pass
+
+    def _load_recent_videos_for_analysis(self, limit: int = 200) -> List[Dict]:
+        if not self.db:
+            return []
+        videos = self.db.get_recent_videos(limit=limit)
+        enriched = []
+        for v in videos:
+            try:
+                history = self.db.get_video_history(v.get('video_url', ''), limit=3)
+                # Normalize history to spy format
+                snapshots = []
+                for h in reversed(history):
+                    snapshots.append({
+                        'views': h.get('views', 0),
+                        'likes': h.get('likes', 0),
+                        'comments': h.get('comments', 0),
+                        'checked_at': h.get('recorded_at')
+                    })
+                vel = self.calculate_velocity(snapshots) if snapshots else {'velocity': 0, 'acceleration': 1.0}
+                v['velocity'] = vel.get('velocity', 0)
+                v['acceleration'] = vel.get('acceleration', 1.0)
+                enriched.append(v)
+            except Exception:
+                enriched.append(v)
+        return enriched
 
     def _discover_youtube(self, max_videos: int = 30) -> List[Dict]:
         """Поиск видео на YouTube"""

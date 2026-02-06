@@ -7,8 +7,12 @@ from flask import Blueprint, request, jsonify
 from flask_jwt_extended import jwt_required, get_jwt_identity
 from sqlalchemy import func
 
-from .database import db, User, Blogger, VideoHistory, TrendVideo, DetectedTrend, ActivityLog, UserLimits
-from .auth import admin_required, hash_password, log_activity
+try:
+    from .database import db, User, Blogger, VideoHistory, TrendVideo, DetectedTrend, ActivityLog
+    from .auth import admin_required, hash_password, log_activity
+except ImportError:
+    from database import db, User, Blogger, VideoHistory, TrendVideo, DetectedTrend, ActivityLog
+    from auth import admin_required, hash_password, log_activity
 
 admin_bp = Blueprint('admin', __name__, url_prefix='/api/admin')
 
@@ -23,10 +27,10 @@ def get_stats():
     videos_count = VideoHistory.query.count()
     trends_count = DetectedTrend.query.count()
 
-    # Пользователи по планам
-    users_by_plan = db.session.query(
-        User.plan, func.count(User.id)
-    ).group_by(User.plan).all()
+    # Пользователи по ролям
+    users_by_role = db.session.query(
+        User.role, func.count(User.id)
+    ).group_by(User.role).all()
 
     # Активность за последние 7 дней
     week_ago = datetime.utcnow() - timedelta(days=7)
@@ -42,7 +46,7 @@ def get_stats():
         'users': {
             'total': users_count,
             'active': active_users,
-            'by_plan': {plan: count for plan, count in users_by_plan},
+            'by_role': {role: count for role, count in users_by_role},
             'new_this_week': new_users
         },
         'bloggers': bloggers_count,
@@ -59,7 +63,7 @@ def list_users():
     page = request.args.get('page', 1, type=int)
     per_page = request.args.get('per_page', 20, type=int)
     search = request.args.get('search', '').strip()
-    plan_filter = request.args.get('plan', '')
+    role_filter = request.args.get('role', '')
 
     query = User.query
 
@@ -69,8 +73,8 @@ def list_users():
             (User.name.ilike(f'%{search}%'))
         )
 
-    if plan_filter:
-        query = query.filter(User.plan == plan_filter)
+    if role_filter:
+        query = query.filter(User.role == role_filter)
 
     query = query.order_by(User.created_at.desc())
     pagination = query.paginate(page=page, per_page=per_page, error_out=False)
@@ -134,9 +138,6 @@ def update_user(user_id):
     if 'role' in data and data['role'] in ['user', 'admin']:
         user.role = data['role']
 
-    if 'plan' in data and data['plan'] in ['free', 'pro', 'enterprise']:
-        user.plan = data['plan']
-
     if 'is_active' in data:
         user.is_active = bool(data['is_active'])
 
@@ -187,7 +188,6 @@ def create_user():
     password = data.get('password', '')
     name = data.get('name', '')
     role = data.get('role', 'user')
-    plan = data.get('plan', 'free')
 
     if not email or not password:
         return jsonify({'error': 'Email and password required'}), 400
@@ -199,8 +199,7 @@ def create_user():
         email=email,
         password_hash=hash_password(password),
         name=name or email.split('@')[0],
-        role=role if role in ['user', 'admin'] else 'user',
-        plan=plan if plan in ['free', 'pro', 'enterprise'] else 'free'
+        role=role if role in ['user', 'admin'] else 'user'
     )
     db.session.add(user)
     db.session.commit()
@@ -252,46 +251,6 @@ def get_logs():
         'pages': pagination.pages,
         'current_page': page
     })
-
-
-@admin_bp.route('/limits', methods=['GET'])
-@admin_required
-def get_limits():
-    """Получить все лимиты планов"""
-    limits = UserLimits.query.all()
-    return jsonify({
-        'limits': [{
-            'plan': l.plan,
-            'max_bloggers': l.max_bloggers,
-            'max_videos_per_day': l.max_videos_per_day,
-            'trend_watch_enabled': l.trend_watch_enabled,
-            'api_rate_limit': l.api_rate_limit
-        } for l in limits]
-    })
-
-
-@admin_bp.route('/limits/<plan>', methods=['PUT'])
-@admin_required
-def update_limits(plan):
-    """Обновить лимиты плана"""
-    limits = UserLimits.query.filter_by(plan=plan).first_or_404()
-    data = request.get_json()
-
-    if 'max_bloggers' in data:
-        limits.max_bloggers = int(data['max_bloggers'])
-    if 'max_videos_per_day' in data:
-        limits.max_videos_per_day = int(data['max_videos_per_day'])
-    if 'trend_watch_enabled' in data:
-        limits.trend_watch_enabled = bool(data['trend_watch_enabled'])
-    if 'api_rate_limit' in data:
-        limits.api_rate_limit = int(data['api_rate_limit'])
-
-    db.session.commit()
-
-    admin_id = get_jwt_identity()
-    log_activity(admin_id, 'admin_update_limits', {'plan': plan})
-
-    return jsonify({'success': True})
 
 
 @admin_bp.route('/trends/stats', methods=['GET'])

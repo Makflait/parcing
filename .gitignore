@@ -46,6 +46,10 @@ ENV/
 *.swp
 *.swo
 *~
+.claude/
+.tmp_web_pid
+tmp_login.json
+nul
 
 # OS
 .DS_Store

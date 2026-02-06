@@ -12,7 +12,10 @@ from flask_jwt_extended import (
     jwt_required, get_jwt_identity, get_jwt
 )
 
-from .database import db, User, Session, ActivityLog, UserLimits
+try:
+    from .database import db, User, Session, ActivityLog
+except ImportError:
+    from database import db, User, Session, ActivityLog
 
 auth_bp = Blueprint('auth', __name__, url_prefix='/api/auth')
 jwt = JWTManager()
@@ -51,24 +54,6 @@ def log_activity(user_id: int, action: str, details: dict = None):
         pass
 
 
-def get_user_limits(user: User) -> dict:
-    """Получить лимиты пользователя"""
-    limits = UserLimits.query.filter_by(plan=user.plan).first()
-    if limits:
-        return {
-            'max_bloggers': limits.max_bloggers,
-            'max_videos_per_day': limits.max_videos_per_day,
-            'trend_watch_enabled': limits.trend_watch_enabled,
-            'api_rate_limit': limits.api_rate_limit
-        }
-    return {
-        'max_bloggers': 5,
-        'max_videos_per_day': 100,
-        'trend_watch_enabled': False,
-        'api_rate_limit': 100
-    }
-
-
 # Decorators
 
 def admin_required(f):
@@ -76,7 +61,7 @@ def admin_required(f):
     @wraps(f)
     @jwt_required()
     def decorated(*args, **kwargs):
-        user_id = get_jwt_identity()
+        user_id = int(get_jwt_identity())
         user = User.query.get(user_id)
         if not user or user.role != 'admin':
             return jsonify({'error': 'Admin access required'}), 403
@@ -87,7 +72,7 @@ def admin_required(f):
 
 def get_current_user():
     """Получить текущего пользователя"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     return User.query.get(user_id)
 
 
@@ -131,13 +116,12 @@ def login():
     log_activity(user.id, 'login', {'email': email})
 
     # Создать токены
-    access_token = create_access_token(identity=user.id)
-    refresh_token = create_refresh_token(identity=user.id)
+    access_token = create_access_token(identity=str(user.id))
+    refresh_token = create_refresh_token(identity=str(user.id))
 
     return jsonify({
         'success': True,
         'user': user.to_dict(),
-        'limits': get_user_limits(user),
         'access_token': access_token,
         'refresh_token': refresh_token
     })
@@ -147,7 +131,7 @@ def login():
 @jwt_required()
 def logout():
     """Выход пользователя"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     log_activity(user_id, 'logout', {})
     return jsonify({'success': True, 'message': 'Logged out'})
 
@@ -156,13 +140,13 @@ def logout():
 @jwt_required(refresh=True)
 def refresh():
     """Обновить access token"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
 
     if not user or not user.is_active:
         return jsonify({'error': 'Invalid user'}), 401
 
-    access_token = create_access_token(identity=user_id)
+    access_token = create_access_token(identity=str(user_id))
     return jsonify({
         'access_token': access_token
     })
@@ -172,7 +156,7 @@ def refresh():
 @jwt_required()
 def me():
     """Получить текущего пользователя"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
 
     if not user:
@@ -180,7 +164,6 @@ def me():
 
     return jsonify({
         'user': user.to_dict(),
-        'limits': get_user_limits(user),
         'bloggers_count': user.bloggers.filter_by(is_active=True).count()
     })
 
@@ -189,7 +172,7 @@ def me():
 @jwt_required()
 def change_password():
     """Смена пароля"""
-    user_id = get_jwt_identity()
+    user_id = int(get_jwt_identity())
     user = User.query.get(user_id)
     data = request.get_json()
 

@@ -222,6 +222,9 @@ class YouTubeParser:
         videos = self.get_all_videos(channel_url, max_videos=1)
         return videos[0] if videos else None
 
+    def get_channel_videos(self, channel_url: str, max_videos: int = 30) -> List[Dict]:
+        return self.get_all_videos(channel_url, max_videos=max_videos)
+
     def close(self):
         """Закрывает ресурсы"""
-        pass
+        return

@@ -18,7 +18,6 @@ class User(db.Model):
     password_hash = db.Column(db.String(255), nullable=False)
     name = db.Column(db.String(255))
     role = db.Column(db.String(50), default='user')  # user, admin
-    plan = db.Column(db.String(50), default='free')  # free, pro, enterprise
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     last_login = db.Column(db.DateTime)
     is_active = db.Column(db.Boolean, default=True)
@@ -32,23 +31,10 @@ class User(db.Model):
             'email': self.email,
             'name': self.name,
             'role': self.role,
-            'plan': self.plan,
             'created_at': self.created_at.isoformat() if self.created_at else None,
             'last_login': self.last_login.isoformat() if self.last_login else None,
             'is_active': self.is_active
         }
-
-
-class UserLimits(db.Model):
-    """Лимиты по плану"""
-    __tablename__ = 'user_limits'
-
-    id = db.Column(db.Integer, primary_key=True)
-    plan = db.Column(db.String(50), unique=True, nullable=False)
-    max_bloggers = db.Column(db.Integer, default=5)
-    max_videos_per_day = db.Column(db.Integer, default=100)
-    trend_watch_enabled = db.Column(db.Boolean, default=False)
-    api_rate_limit = db.Column(db.Integer, default=100)
 
 
 class Blogger(db.Model):
@@ -98,7 +84,7 @@ class VideoHistory(db.Model):
     velocity = db.Column(db.Float, default=0)
     recorded_at = db.Column(db.DateTime, default=datetime.utcnow)
     hashtags = db.Column(db.JSON, default=list)
-    metadata = db.Column(db.JSON, default=dict)
+    extra_data = db.Column(db.JSON, default=dict)
 
     def to_dict(self):
         return {
@@ -136,7 +122,7 @@ class TrendVideo(db.Model):
     status = db.Column(db.String(50), default='monitoring')
     hashtags = db.Column(db.JSON, default=list)
     topics = db.Column(db.JSON, default=list)
-    metadata = db.Column(db.JSON, default=dict)
+    extra_data = db.Column(db.JSON, default=dict)
 
     # Relationships
     snapshots = db.relationship('TrendSnapshot', backref='video', lazy='dynamic', cascade='all, delete-orphan')
@@ -234,9 +220,3 @@ def init_db(app):
     db.init_app(app)
     with app.app_context():
         db.create_all()
-        # Создать лимиты по умолчанию
-        if not UserLimits.query.filter_by(plan='free').first():
-            db.session.add(UserLimits(plan='free', max_bloggers=5, max_videos_per_day=100, trend_watch_enabled=False))
-            db.session.add(UserLimits(plan='pro', max_bloggers=50, max_videos_per_day=1000, trend_watch_enabled=True))
-            db.session.add(UserLimits(plan='enterprise', max_bloggers=-1, max_videos_per_day=-1, trend_watch_enabled=True))
-            db.session.commit()

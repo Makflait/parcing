@@ -78,28 +78,10 @@ CREATE TABLE users (
     email VARCHAR(255) UNIQUE NOT NULL,
     password_hash VARCHAR(255) NOT NULL,
     role VARCHAR(50) DEFAULT 'user',  -- user, admin
-    plan VARCHAR(50) DEFAULT 'free',  -- free, pro, enterprise
     created_at TIMESTAMP DEFAULT NOW(),
     last_login TIMESTAMP,
     is_active BOOLEAN DEFAULT TRUE
 );
-```
-
-### User Limits (Лимиты по плану)
-```sql
-CREATE TABLE user_limits (
-    id SERIAL PRIMARY KEY,
-    plan VARCHAR(50) UNIQUE,
-    max_bloggers INTEGER,
-    max_videos_per_day INTEGER,
-    trend_watch_enabled BOOLEAN,
-    api_rate_limit INTEGER
-);
-
-INSERT INTO user_limits VALUES
-('free', 5, 100, FALSE, 100),
-('pro', 50, 1000, TRUE, 1000),
-('enterprise', -1, -1, TRUE, -1);  -- -1 = unlimited
 ```
 
 ### Bloggers (с tenant isolation)
@@ -203,7 +185,7 @@ DELETE /api/bloggers/:id       - Удалить блогера
 GET    /api/bloggers/:id/stats - Статистика блогера
 ```
 
-### Trends API (требует auth + plan)
+### Trends API (требует auth)
 ```
 GET  /api/trends/discover     - Запустить discovery
 GET  /api/trends/videos       - Мониторящиеся видео
@@ -224,12 +206,11 @@ GET    /api/admin/logs        - Логи системы
 
 ```yaml
 services:
-  web:        # Flask приложение
+  web:        # Flask приложение (gunicorn)
   db:         # PostgreSQL
   redis:      # Cache + Queue
-  worker:     # Celery worker
-  beat:       # Celery beat (scheduler)
-  nginx:      # Reverse proxy
+  worker:     # Celery worker + beat (задачи + расписание)
+  nginx:      # Reverse proxy (production profile)
 ```
 
 ## Безопасность

@@ -245,12 +245,8 @@
                 localStorage.setItem('refresh_token', data.refresh_token);
                 localStorage.setItem('user', JSON.stringify(data.user));
 
-                // Редирект
-                if (data.user.role === 'admin') {
-                    window.location.href = '/admin.html';
-                } else {
-                    window.location.href = '/';
-                }
+                // Редирект на дашборд
+                window.location.href = '/';
 
             } catch (err) {
                 errorEl.textContent = 'Ошибка соединения';

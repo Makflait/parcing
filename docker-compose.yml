@@ -43,6 +43,7 @@ services:
       - DATABASE_URL=postgresql://blogger_user:${DB_PASSWORD:-secure_password_change_me}@db:5432/blogger_analytics
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
+      - REQUIRE_AUTH=true
       - FLASK_ENV=${FLASK_ENV:-production}
     volumes:
       - ./logs:/app/logs
@@ -56,11 +57,11 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Celery Worker for background tasks
+  # Celery Worker + Beat (фоновые задачи + расписание в одном контейнере)
   worker:
     build: .
     container_name: blogger_worker
-    command: celery -A web.celery_app worker --loglevel=info --concurrency=4
+    command: celery -A web.celery_app:celery_app worker --beat --loglevel=info --concurrency=2
     environment:
       - DATABASE_URL=postgresql://blogger_user:${DB_PASSWORD:-secure_password_change_me}@db:5432/blogger_analytics
       - REDIS_URL=redis://redis:6379/0
@@ -75,22 +76,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Celery Beat for scheduled tasks
-  beat:
-    build: .
-    container_name: blogger_beat
-    command: celery -A web.celery_app beat --loglevel=info
-    environment:
-      - DATABASE_URL=postgresql://blogger_user:${DB_PASSWORD:-secure_password_change_me}@db:5432/blogger_analytics
-      - REDIS_URL=redis://redis:6379/0
-      - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
-    volumes:
-      - ./logs:/app/logs
-    depends_on:
-      - worker
-    restart: unless-stopped
-
-  # Nginx Reverse Proxy (optional, for production)
+  # Nginx Reverse Proxy (production)
   nginx:
     image: nginx:alpine
     container_name: blogger_nginx

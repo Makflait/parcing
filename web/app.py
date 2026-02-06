@@ -30,7 +30,12 @@ CREDENTIALS_FILE = os.path.join(BASE_DIR, 'credentials.json')
 CONFIG_FILE = os.path.join(BASE_DIR, 'config.json')
 
 # Определяем режим работы
-USE_POSTGRES = os.getenv('DATABASE_URL') is not None
+# DATABASE_URL может быть PostgreSQL или SQLite
+DATABASE_URL = os.getenv('DATABASE_URL')
+if not DATABASE_URL and os.path.exists(os.path.join(BASE_DIR, 'data', 'blogger_analytics.db')):
+    DATABASE_URL = f'sqlite:///{os.path.join(BASE_DIR, "data", "blogger_analytics.db")}'
+
+USE_DATABASE = DATABASE_URL is not None
 REQUIRE_AUTH = os.getenv('REQUIRE_AUTH', 'false').lower() == 'true'
 
 # Инициализация приложения
@@ -38,20 +43,43 @@ app = Flask(__name__, static_folder='static')
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'dev-secret-key')
 CORS(app, supports_credentials=True)
 
-# PostgreSQL + Auth режим
-if USE_POSTGRES:
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL')
+# Database + Auth режим (PostgreSQL или SQLite)
+if USE_DATABASE:
+    app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-    from .database import db, init_db, User, Blogger, VideoHistory
-    from .auth import auth_bp, init_auth, get_current_user, jwt_required, get_jwt_identity
-    from .admin import admin_bp
+    try:
+        # Относительный импорт (если запущен как модуль)
+        from .database import db, init_db, User, Blogger, VideoHistory
+        from .auth import auth_bp, init_auth, get_current_user, jwt_required, get_jwt_identity
+        from .admin import admin_bp
+    except ImportError:
+        # Абсолютный импорт (если запущен как скрипт)
+        from database import db, init_db, User, Blogger, VideoHistory
+        from auth import auth_bp, init_auth, get_current_user, jwt_required, get_jwt_identity
+        from admin import admin_bp
 
     init_db(app)
     init_auth(app)
 
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
+
+    # Инициализация Parser Service
+    try:
+        from parser_service import init_parser_service
+        init_parser_service(app)
+    except ImportError:
+        print("[Warning] Parser service not available")
+
+    # Инициализация Scheduler (ежедневный автопарсинг)
+    try:
+        from scheduler import init_scheduler
+        init_scheduler(app)
+    except ImportError:
+        print("[Warning] Scheduler not available")
+    except Exception as e:
+        print(f"[Warning] Scheduler init error: {e}")
 
 # Импорт Trend Watcher
 try:
@@ -87,7 +115,7 @@ def optional_auth(f):
     """Декоратор: auth обязателен только если REQUIRE_AUTH=true"""
     @wraps(f)
     def decorated(*args, **kwargs):
-        if REQUIRE_AUTH and USE_POSTGRES:
+        if REQUIRE_AUTH and USE_DATABASE:
             from flask_jwt_extended import jwt_required, get_jwt_identity
             @jwt_required()
             def inner():
@@ -152,25 +180,22 @@ def health_check():
     """Health check endpoint"""
     return jsonify({
         'status': 'ok',
-        'mode': 'postgres' if USE_POSTGRES else 'local',
+        'mode': 'database' if USE_DATABASE else 'local',
+        'database': DATABASE_URL.split('://')[0] if USE_DATABASE else None,
         'auth_required': REQUIRE_AUTH,
         'trends_available': HAS_TRENDS,
         'spy_available': HAS_SPY
     })
 
 
-# ==================== API: STATS ====================
+# ==================== API: STATS (Database) ====================
 
 @app.route('/api/stats')
-@optional_auth
+@jwt_required()
 def get_stats():
-    """Получение общей статистики"""
+    """Получение общей статистики пользователя"""
     try:
-        client = get_sheets_client()
-        config = load_config()
-        spreadsheet = client.open(config.get('spreadsheet_name', 'Blogger Stats'))
-
-        config_bloggers = {b['name'] for b in config.get('bloggers', [])}
+        user_id = int(get_jwt_identity())
 
         stats = {
             'total_videos': 0,
@@ -178,68 +203,92 @@ def get_stats():
             'total_likes': 0,
             'total_comments': 0,
             'bloggers': [],
-            'platforms': {'YouTube': {'videos': 0, 'views': 0}, 'TikTok': {'videos': 0, 'views': 0}}
+            'platforms': {
+                'youtube': {'videos': 0, 'views': 0},
+                'tiktok': {'videos': 0, 'views': 0},
+                'instagram': {'videos': 0, 'views': 0}
+            }
         }
 
-        sheets_by_name = {sheet.title: sheet for sheet in spreadsheet.worksheets()}
+        # Получаем блогеров пользователя
+        bloggers = Blogger.query.filter_by(user_id=user_id, is_active=True).all()
 
-        for blogger in config.get('bloggers', []):
-            blogger_name = blogger['name']
-
+        for blogger in bloggers:
             blogger_stats = {
-                'name': blogger_name,
+                'id': blogger.id,
+                'name': blogger.name,
+                'youtube': blogger.youtube_url,
+                'tiktok': blogger.tiktok_url,
+                'instagram': blogger.instagram_url,
                 'videos': 0,
                 'views': 0,
                 'likes': 0,
                 'comments': 0,
                 'youtube_views': 0,
                 'tiktok_views': 0,
+                'instagram_views': 0,
                 'avg_views': 0,
                 'engagement': 0
             }
 
-            if blogger_name in sheets_by_name:
-                sheet = sheets_by_name[blogger_name]
-                data = sheet.get_all_values()
+            # Агрегация по платформам
+            platform_stats = db.session.query(
+                VideoHistory.platform,
+                db.func.count(VideoHistory.id).label('videos'),
+                db.func.sum(VideoHistory.views).label('views'),
+                db.func.sum(VideoHistory.likes).label('likes'),
+                db.func.sum(VideoHistory.comments).label('comments')
+            ).filter(
+                VideoHistory.blogger_id == blogger.id,
+                VideoHistory.user_id == user_id
+            ).group_by(VideoHistory.platform).all()
 
-                for row in data[1:]:
-                    if len(row) >= 9:
-                        try:
-                            platform = row[0]
-                            views = int(row[5]) if row[5] else 0
-                            likes = int(row[6]) if row[6] else 0
-                            comments = int(row[7]) if row[7] else 0
+            for ps in platform_stats:
+                platform = ps.platform or 'unknown'
+                videos_count = ps.videos or 0
+                views_count = int(ps.views or 0)
+                likes_count = int(ps.likes or 0)
+                comments_count = int(ps.comments or 0)
 
-                            blogger_stats['videos'] += 1
-                            blogger_stats['views'] += views
-                            blogger_stats['likes'] += likes
-                            blogger_stats['comments'] += comments
+                blogger_stats['videos'] += videos_count
+                blogger_stats['views'] += views_count
+                blogger_stats['likes'] += likes_count
+                blogger_stats['comments'] += comments_count
 
-                            stats['total_videos'] += 1
-                            stats['total_views'] += views
-                            stats['total_likes'] += likes
-                            stats['total_comments'] += comments
+                stats['total_videos'] += videos_count
+                stats['total_views'] += views_count
+                stats['total_likes'] += likes_count
+                stats['total_comments'] += comments_count
 
-                            if platform == 'YouTube':
-                                blogger_stats['youtube_views'] += views
-                                stats['platforms']['YouTube']['videos'] += 1
-                                stats['platforms']['YouTube']['views'] += views
-                            elif platform == 'TikTok':
-                                blogger_stats['tiktok_views'] += views
-                                stats['platforms']['TikTok']['videos'] += 1
-                                stats['platforms']['TikTok']['views'] += views
-                        except:
-                            continue
+                if platform in stats['platforms']:
+                    stats['platforms'][platform]['videos'] += videos_count
+                    stats['platforms'][platform]['views'] += views_count
 
-                if blogger_stats['videos'] > 0:
-                    blogger_stats['avg_views'] = blogger_stats['views'] // blogger_stats['videos']
-                    blogger_stats['engagement'] = round(blogger_stats['likes'] / blogger_stats['views'] * 100, 2) if blogger_stats['views'] > 0 else 0
+                if platform == 'youtube':
+                    blogger_stats['youtube_views'] = views_count
+                elif platform == 'tiktok':
+                    blogger_stats['tiktok_views'] = views_count
+                elif platform == 'instagram':
+                    blogger_stats['instagram_views'] = views_count
+
+            if blogger_stats['videos'] > 0:
+                blogger_stats['avg_views'] = blogger_stats['views'] // blogger_stats['videos']
+            if blogger_stats['views'] > 0:
+                blogger_stats['engagement'] = round(blogger_stats['likes'] / blogger_stats['views'] * 100, 2)
 
             stats['bloggers'].append(blogger_stats)
 
         stats['bloggers'].sort(key=lambda x: x['views'], reverse=True)
-        stats['avg_views'] = stats['total_views'] // stats['total_videos'] if stats['total_videos'] > 0 else 0
-        stats['engagement'] = round(stats['total_likes'] / stats['total_views'] * 100, 2) if stats['total_views'] > 0 else 0
+
+        if stats['total_videos'] > 0:
+            stats['avg_views'] = stats['total_views'] // stats['total_videos']
+        else:
+            stats['avg_views'] = 0
+
+        if stats['total_views'] > 0:
+            stats['engagement'] = round(stats['total_likes'] / stats['total_views'] * 100, 2)
+        else:
+            stats['engagement'] = 0
 
         return jsonify(stats)
 
@@ -247,152 +296,262 @@ def get_stats():
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/blogger/<name>')
-@optional_auth
-def get_blogger_details(name):
+@app.route('/api/blogger/<int:blogger_id>')
+@jwt_required()
+def get_blogger_details(blogger_id):
     """Детальная информация о блогере"""
     try:
-        client = get_sheets_client()
-        config = load_config()
-        spreadsheet = client.open(config.get('spreadsheet_name', 'Blogger Stats'))
+        user_id = int(get_jwt_identity())
 
-        try:
-            sheet = spreadsheet.worksheet(name)
-        except:
+        blogger = Blogger.query.filter_by(id=blogger_id, user_id=user_id).first()
+        if not blogger:
             return jsonify({'error': 'Блогер не найден'}), 404
 
-        data = sheet.get_all_values()
-        videos = []
+        # Получаем видео
+        videos = VideoHistory.query.filter_by(
+            blogger_id=blogger_id,
+            user_id=user_id
+        ).order_by(VideoHistory.views.desc()).limit(100).all()
 
-        for row in data[1:]:
-            if len(row) >= 9:
-                try:
-                    videos.append({
-                        'platform': row[0],
-                        'publish_date': row[1],
-                        'last_update': row[2],
-                        'title': row[3][:80] + '...' if len(row[3]) > 80 else row[3],
-                        'url': row[4],
-                        'views': int(row[5]) if row[5] else 0,
-                        'likes': int(row[6]) if row[6] else 0,
-                        'comments': int(row[7]) if row[7] else 0,
-                        'shares': int(row[8]) if row[8] else 0
-                    })
-                except:
-                    continue
+        videos_data = []
+        for v in videos:
+            videos_data.append({
+                'id': v.id,
+                'platform': v.platform,
+                'title': v.title[:80] + '...' if v.title and len(v.title) > 80 else v.title,
+                'url': v.video_url,
+                'views': v.views,
+                'likes': v.likes,
+                'comments': v.comments,
+                'shares': v.shares,
+                'engagement_rate': v.engagement_rate,
+                'recorded_at': v.recorded_at.isoformat() if v.recorded_at else None
+            })
 
-        videos.sort(key=lambda x: x['views'], reverse=True)
-
-        blogger_config = None
-        for b in config.get('bloggers', []):
-            if b['name'] == name:
-                blogger_config = b
-                break
+        # Статистика по платформам
+        platform_stats = {}
+        for platform in ['youtube', 'tiktok', 'instagram']:
+            count = len([v for v in videos_data if v['platform'] == platform])
+            views = sum([v['views'] for v in videos_data if v['platform'] == platform])
+            platform_stats[platform] = {'videos': count, 'views': views}
 
         return jsonify({
-            'name': name,
-            'config': blogger_config,
-            'videos': videos,
-            'total_videos': len(videos),
-            'total_views': sum(v['views'] for v in videos),
-            'total_likes': sum(v['likes'] for v in videos),
-            'youtube_videos': len([v for v in videos if v['platform'] == 'YouTube']),
-            'tiktok_videos': len([v for v in videos if v['platform'] == 'TikTok'])
+            'id': blogger.id,
+            'name': blogger.name,
+            'youtube': blogger.youtube_url,
+            'tiktok': blogger.tiktok_url,
+            'instagram': blogger.instagram_url,
+            'created_at': blogger.created_at.isoformat() if blogger.created_at else None,
+            'updated_at': blogger.updated_at.isoformat() if blogger.updated_at else None,
+            'videos': videos_data,
+            'total_videos': len(videos_data),
+            'total_views': sum(v['views'] for v in videos_data),
+            'total_likes': sum(v['likes'] for v in videos_data),
+            'platforms': platform_stats
         })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
-# ==================== API: BLOGGERS CRUD ====================
+# ==================== API: BLOGGERS CRUD (Database) ====================
 
 @app.route('/api/bloggers')
-@optional_auth
+@jwt_required()
 def get_bloggers():
-    """Список блогеров"""
-    config = load_config()
-    return jsonify(config.get('bloggers', []))
+    """Список блогеров текущего пользователя со статистикой"""
+    user_id = int(get_jwt_identity())
+
+    bloggers = Blogger.query.filter_by(user_id=user_id, is_active=True).all()
+
+    result = []
+    for blogger in bloggers:
+        blogger_data = blogger.to_dict()
+
+        # Агрегируем статистику из VideoHistory
+        stats = db.session.query(
+            VideoHistory.platform,
+            db.func.count(VideoHistory.id).label('videos'),
+            db.func.sum(VideoHistory.views).label('views'),
+            db.func.sum(VideoHistory.likes).label('likes'),
+            db.func.sum(VideoHistory.comments).label('comments')
+        ).filter(
+            VideoHistory.blogger_id == blogger.id,
+            VideoHistory.user_id == user_id
+        ).group_by(VideoHistory.platform).all()
+
+        blogger_data['videos'] = 0
+        blogger_data['views'] = 0
+        blogger_data['likes'] = 0
+        blogger_data['comments'] = 0
+        blogger_data['youtube_views'] = 0
+        blogger_data['tiktok_views'] = 0
+        blogger_data['instagram_views'] = 0
+
+        for stat in stats:
+            blogger_data['videos'] += stat.videos or 0
+            blogger_data['views'] += int(stat.views or 0)
+            blogger_data['likes'] += int(stat.likes or 0)
+            blogger_data['comments'] += int(stat.comments or 0)
+
+            if stat.platform == 'youtube':
+                blogger_data['youtube_views'] = int(stat.views or 0)
+            elif stat.platform == 'tiktok':
+                blogger_data['tiktok_views'] = int(stat.views or 0)
+            elif stat.platform == 'instagram':
+                blogger_data['instagram_views'] = int(stat.views or 0)
+
+        if blogger_data['videos'] > 0:
+            blogger_data['avg_views'] = blogger_data['views'] // blogger_data['videos']
+        else:
+            blogger_data['avg_views'] = 0
+
+        if blogger_data['views'] > 0:
+            blogger_data['engagement'] = round(blogger_data['likes'] / blogger_data['views'] * 100, 2)
+        else:
+            blogger_data['engagement'] = 0
+
+        result.append(blogger_data)
+
+    return jsonify(result)
 
 
 @app.route('/api/bloggers', methods=['POST'])
-@optional_auth
+@jwt_required()
 def add_blogger():
-    """Добавление блогера"""
+    """Добавление блогера с автоматическим парсингом"""
     try:
+        user_id = int(get_jwt_identity())
         data = request.json
+
         name = data.get('name', '').strip()
         youtube = data.get('youtube', '').strip()
         tiktok = data.get('tiktok', '').strip()
+        instagram = data.get('instagram', '').strip()
 
         if not name:
             return jsonify({'error': 'Имя обязательно'}), 400
-        if not youtube and not tiktok:
+        if not youtube and not tiktok and not instagram:
             return jsonify({'error': 'Нужна хотя бы одна ссылка'}), 400
 
-        config = load_config()
+        # Проверяем дубликат
+        existing = Blogger.query.filter_by(user_id=user_id, name=name, is_active=True).first()
+        if existing:
+            return jsonify({'error': 'Блогер уже существует'}), 400
 
-        for b in config.get('bloggers', []):
-            if b['name'].lower() == name.lower():
-                return jsonify({'error': 'Блогер уже существует'}), 400
+        # Создаём блогера
+        blogger = Blogger(
+            user_id=user_id,
+            name=name,
+            youtube_url=youtube or None,
+            tiktok_url=tiktok or None,
+            instagram_url=instagram or None
+        )
+        db.session.add(blogger)
+        db.session.commit()
 
-        new_blogger = {'name': name}
-        if youtube:
-            new_blogger['youtube'] = youtube
-        if tiktok:
-            new_blogger['tiktok'] = tiktok
-        if data.get('instagram'):
-            new_blogger['instagram'] = data.get('instagram', '').strip()
+        blogger_data = blogger.to_dict()
+        blogger_data['videos'] = 0
+        blogger_data['views'] = 0
+        blogger_data['likes'] = 0
+        blogger_data['youtube_views'] = 0
+        blogger_data['tiktok_views'] = 0
+        blogger_data['instagram_views'] = 0
+        blogger_data['parsing'] = True
 
-        config.setdefault('bloggers', []).append(new_blogger)
-        save_config(config)
+        # Запускаем парсинг в фоне
+        try:
+            from parser_service import get_parser_service
+            ps = get_parser_service()
+            if ps:
+                ps.parse_blogger_async(blogger.id, user_id)
+        except:
+            blogger_data['parsing'] = False
 
-        return jsonify({'success': True, 'blogger': new_blogger})
+        return jsonify({
+            'success': True,
+            'blogger': blogger_data,
+            'message': 'Блогер добавлен, данные загружаются...'
+        })
 
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/bloggers/<name>', methods=['PUT'])
-@optional_auth
-def update_blogger(name):
+@app.route('/api/bloggers/<int:blogger_id>', methods=['PUT'])
+@jwt_required()
+def update_blogger(blogger_id):
     """Обновление блогера"""
     try:
+        user_id = int(get_jwt_identity())
         data = request.json
-        config = load_config()
 
-        for blogger in config.get('bloggers', []):
-            if blogger['name'] == name:
-                if data.get('name'):
-                    blogger['name'] = data['name']
-                if 'youtube' in data:
-                    blogger['youtube'] = data['youtube']
-                if 'tiktok' in data:
-                    blogger['tiktok'] = data['tiktok']
-                if 'instagram' in data:
-                    blogger['instagram'] = data['instagram']
-                save_config(config)
-                return jsonify({'success': True, 'blogger': blogger})
+        blogger = Blogger.query.filter_by(id=blogger_id, user_id=user_id).first()
+        if not blogger:
+            return jsonify({'error': 'Блогер не найден'}), 404
 
-        return jsonify({'error': 'Блогер не найден'}), 404
+        if data.get('name'):
+            blogger.name = data['name']
+        if 'youtube' in data:
+            blogger.youtube_url = data['youtube'] or None
+        if 'tiktok' in data:
+            blogger.tiktok_url = data['tiktok'] or None
+        if 'instagram' in data:
+            blogger.instagram_url = data['instagram'] or None
+
+        blogger.updated_at = datetime.utcnow()
+        db.session.commit()
+
+        return jsonify({'success': True, 'blogger': blogger.to_dict()})
 
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 
-@app.route('/api/bloggers/<name>', methods=['DELETE'])
-@optional_auth
-def delete_blogger(name):
-    """Удаление блогера"""
+@app.route('/api/bloggers/<int:blogger_id>', methods=['DELETE'])
+@jwt_required()
+def delete_blogger(blogger_id):
+    """Удаление блогера (soft delete)"""
     try:
-        config = load_config()
-        original_count = len(config.get('bloggers', []))
-        config['bloggers'] = [b for b in config.get('bloggers', []) if b['name'] != name]
+        user_id = int(get_jwt_identity())
 
-        if len(config['bloggers']) == original_count:
+        blogger = Blogger.query.filter_by(id=blogger_id, user_id=user_id).first()
+        if not blogger:
             return jsonify({'error': 'Блогер не найден'}), 404
 
-        save_config(config)
+        blogger.is_active = False
+        db.session.commit()
+
         return jsonify({'success': True})
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+
+@app.route('/api/bloggers/<int:blogger_id>/parse', methods=['POST'])
+@jwt_required()
+def parse_single_blogger(blogger_id):
+    """Запуск парсинга конкретного блогера"""
+    try:
+        user_id = int(get_jwt_identity())
+
+        blogger = Blogger.query.filter_by(id=blogger_id, user_id=user_id).first()
+        if not blogger:
+            return jsonify({'error': 'Блогер не найден'}), 404
+
+        try:
+            from parser_service import get_parser_service
+            ps = get_parser_service()
+            if ps:
+                result = ps.parse_blogger_async(blogger.id, user_id)
+                return jsonify(result)
+        except Exception as e:
+            return jsonify({'error': f'Parser error: {str(e)}'}), 500
+
+        return jsonify({'error': 'Parser not available'}), 500
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -400,65 +559,58 @@ def delete_blogger(name):
 
 # ==================== API: PARSER ====================
 
-def run_parser_thread():
-    """Запуск парсера в отдельном потоке"""
-    global parser_status
-    parser_status['running'] = True
-    parser_status['progress'] = 0
-    parser_status['log'] = []
-
+@app.route('/api/parser/start', methods=['POST'])
+@jwt_required()
+def start_parser():
+    """Запуск парсинга всех блогеров пользователя"""
     try:
-        process = subprocess.Popen(
-            [sys.executable, os.path.join(BASE_DIR, 'main.py')],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            cwd=BASE_DIR
-        )
+        user_id = int(get_jwt_identity())
 
-        for line in process.stdout:
-            line = line.strip()
-            if line:
-                parser_status['log'].append(line)
-                if 'Обработка:' in line:
-                    parser_status['current_blogger'] = line.split('Обработка:')[-1].strip()
-                if '%|' in line:
-                    try:
-                        pct = int(line.split('%')[0].split()[-1])
-                        parser_status['progress'] = pct
-                    except:
-                        pass
+        from parser_service import get_parser_service
+        ps = get_parser_service()
 
-        process.wait()
-        parser_status['progress'] = 100
+        if not ps:
+            return jsonify({'error': 'Parser service not available'}), 500
+
+        if ps.status['running']:
+            return jsonify({'error': 'Парсер уже запущен'}), 400
+
+        # Запускаем парсинг всех блогеров в фоне
+        def run_all():
+            ps.status['running'] = True
+            try:
+                result = ps.parse_all_user_bloggers(user_id)
+                ps.status['total_parsed'] = result.get('parsed', 0)
+                ps.status['errors'] = result.get('errors', [])
+                ps.status['last_run'] = datetime.utcnow().isoformat()
+            finally:
+                ps.status['running'] = False
+                ps.status['progress'] = 100
+
+        thread = threading.Thread(target=run_all, daemon=True)
+        thread.start()
+
+        return jsonify({'success': True, 'message': 'Парсер запущен'})
 
     except Exception as e:
-        parser_status['log'].append(f'Ошибка: {str(e)}')
-
-    finally:
-        parser_status['running'] = False
-
-
-@app.route('/api/parser/start', methods=['POST'])
-@optional_auth
-def start_parser():
-    """Запуск парсера"""
-    global parser_status
-
-    if parser_status['running']:
-        return jsonify({'error': 'Парсер уже запущен'}), 400
-
-    thread = threading.Thread(target=run_parser_thread)
-    thread.start()
-
-    return jsonify({'success': True, 'message': 'Парсер запущен'})
+        return jsonify({'error': str(e)}), 500
 
 
 @app.route('/api/parser/status')
-@optional_auth
+@jwt_required()
 def get_parser_status():
     """Статус парсера"""
-    return jsonify(parser_status)
+    try:
+        from parser_service import get_parser_service
+        ps = get_parser_service()
+
+        if ps:
+            return jsonify(ps.status)
+
+        return jsonify(parser_status)
+
+    except:
+        return jsonify(parser_status)
 
 
 # ==================== API: TREND WATCH (Legacy) ====================
@@ -717,10 +869,18 @@ def spy_report():
 
 
 if __name__ == '__main__':
+    port = int(os.getenv('PORT', '5000'))
     print("=" * 50)
     print("Blogger Analytics Web Interface v3.0")
-    print(f"Mode: {'PostgreSQL' if USE_POSTGRES else 'Local (SQLite/JSON)'}")
+    print(f"Mode: {'PostgreSQL' if USE_DATABASE else 'Local (SQLite/JSON)'}")
     print(f"Auth: {'Required' if REQUIRE_AUTH else 'Optional'}")
-    print("http://localhost:5000")
+    print(f"http://localhost:{port}")
     print("=" * 50)
-    app.run(debug=True, port=5000, host='0.0.0.0')
+    print()
+    print("Startup commands:")
+    print(f"  CMD:        cd web & python app.py")
+    print(f"  PowerShell: cd web; python app.py")
+    print(f"  Custom port (PS): $env:PORT='5001'; python app.py")
+    print(f"  Custom port (CMD): set PORT=5001 & python app.py")
+    print()
+    app.run(debug=True, port=port, host='0.0.0.0', use_reloader=False)
