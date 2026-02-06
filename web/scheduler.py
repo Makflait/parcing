@@ -20,8 +20,8 @@ def parse_all_users_bloggers(app):
     logger.info(f"[Scheduler] Starting daily parsing at {datetime.now()}")
 
     try:
-        from parser_service import get_parser_service
-        from database import User, Blogger
+        from web.parser_service import get_parser_service
+        from web.database import User, Blogger
 
         ps = get_parser_service()
         if not ps:
@@ -93,8 +93,8 @@ def get_scheduler():
 
 def trigger_manual_parse(app, user_id=None):
     """Запуск ручного парсинга (для тестов или админки)"""
-    from parser_service import get_parser_service
-    from database import User, Blogger
+    from web.parser_service import get_parser_service
+    from web.database import User, Blogger
 
     ps = get_parser_service()
     if not ps:

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   # PostgreSQL Database
   db:
@@ -45,6 +43,7 @@ services:
       - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
       - REQUIRE_AUTH=true
       - FLASK_ENV=${FLASK_ENV:-production}
+      - ENABLE_SCHEDULER=false
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data

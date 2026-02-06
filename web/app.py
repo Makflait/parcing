@@ -67,21 +67,30 @@ if USE_DATABASE:
 
     # Инициализация Parser Service
     try:
-        from parser_service import init_parser_service
+        from web.parser_service import init_parser_service
         init_parser_service(app)
     except ImportError:
-        print("[Warning] Parser service not available")
+        try:
+            from parser_service import init_parser_service
+            init_parser_service(app)
+        except ImportError:
+            print("[Warning] Parser service not available")
 
-    # Инициализация Scheduler (ежедневный автопарсинг)
-    try:
-        from scheduler import init_scheduler
-        init_scheduler(app)
-    except ImportError:
-        print("[Warning] Scheduler not available")
-    except Exception as e:
-        print(f"[Warning] Scheduler init error: {e}")
+    # ????????????? Scheduler (?????????? ???????????)
+    if ENABLE_SCHEDULER:
+        try:
+            from web.scheduler import init_scheduler
+            init_scheduler(app)
+        except ImportError:
+            try:
+                from scheduler import init_scheduler
+                init_scheduler(app)
+            except ImportError:
+                print("[Warning] Scheduler not available")
+        except Exception as e:
+            print(f"[Warning] Scheduler init error: {e}")
 
-# Импорт Trend Watcher
+# ?????? Trend Watcher
 try:
     from trends import TrendWatcher, TrendDB
     trend_watcher = TrendWatcher()
