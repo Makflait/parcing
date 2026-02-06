@@ -59,7 +59,7 @@ Multi-tenant, JWT-авторизация, PostgreSQL, Docker.
 ### 1. Клонировать и настроить
 
 ```bash
-git clone <repo-url> && cd blogger-analytics
+git clone <repo-url> && cd parcing
 cp .env.example .env
 ```
 
@@ -79,8 +79,8 @@ ADMIN_PASSWORD=надёжный_пароль
 INSTAGRAM_USERNAME=сервисный_аккаунт
 INSTAGRAM_PASSWORD=пароль_аккаунта
 
-# Лимит видео на платформу (по умолчанию 50)
-MAX_VIDEOS_PER_PLATFORM=50
+# Лимит видео на платформу (по умолчанию 1000)
+MAX_VIDEOS_PER_PLATFORM=1000
 ```
 
 > **Instagram аккаунт**: используйте отдельный сервисный аккаунт.
@@ -183,7 +183,7 @@ docker compose --profile production up -d
 | `ADMIN_NAME` | `Admin` | Имя админа |
 | `REQUIRE_AUTH` | `true` | Требовать JWT для API |
 | `ENABLE_SCHEDULER` | `false` | APScheduler (авто-парсинг в 03:00) |
-| `MAX_VIDEOS_PER_PLATFORM` | `50` | Макс. видео на платформу при парсинге |
+| `MAX_VIDEOS_PER_PLATFORM` | `1000` | Макс. видео на платформу при парсинге |
 | `INSTAGRAM_USERNAME` | -- | Логин Instagram для views |
 | `INSTAGRAM_PASSWORD` | -- | Пароль Instagram |
 | `FLASK_ENV` | `production` | Режим Flask |
@@ -273,7 +273,7 @@ docker compose up -d
 ```
 
 ### Мало видео
-Увеличить `MAX_VIDEOS_PER_PLATFORM` в `.env` (по умолчанию 50).
+Увеличить `MAX_VIDEOS_PER_PLATFORM` в `.env` (по умолчанию 1000).
 
 ### Порт 5000 занят (Windows)
 ```bash

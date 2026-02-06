@@ -12,8 +12,8 @@ import time
 # Добавляем путь к парсерам
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Лимит видео на платформу (по умолчанию 50, настраивается через env)
-MAX_VIDEOS = int(os.getenv('MAX_VIDEOS_PER_PLATFORM', '50'))
+# Лимит видео на платформу (по умолчанию 1000, настраивается через env)
+MAX_VIDEOS = int(os.getenv('MAX_VIDEOS_PER_PLATFORM', '1000'))
 
 try:
     from parsers import YouTubeParser, TikTokParser, InstagramParser
