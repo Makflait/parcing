@@ -279,11 +279,12 @@ def get_stats():
             'total_views': 0,
             'total_likes': 0,
             'total_comments': 0,
+            'total_shares': 0,
             'bloggers': [],
             'platforms': {
-                'youtube': {'videos': 0, 'views': 0},
-                'tiktok': {'videos': 0, 'views': 0},
-                'instagram': {'videos': 0, 'views': 0}
+                'youtube': {'videos': 0, 'views': 0, 'likes': 0, 'comments': 0, 'shares': 0},
+                'tiktok': {'videos': 0, 'views': 0, 'likes': 0, 'comments': 0, 'shares': 0},
+                'instagram': {'videos': 0, 'views': 0, 'likes': 0, 'comments': 0, 'shares': 0}
             }
         }
 
@@ -301,6 +302,7 @@ def get_stats():
                 'views': 0,
                 'likes': 0,
                 'comments': 0,
+                'shares': 0,
                 'youtube_views': 0,
                 'tiktok_views': 0,
                 'instagram_views': 0,
@@ -314,7 +316,8 @@ def get_stats():
                 db.func.count(VideoHistory.id).label('videos'),
                 db.func.sum(VideoHistory.views).label('views'),
                 db.func.sum(VideoHistory.likes).label('likes'),
-                db.func.sum(VideoHistory.comments).label('comments')
+                db.func.sum(VideoHistory.comments).label('comments'),
+                db.func.sum(VideoHistory.shares).label('shares')
             ).filter(
                 VideoHistory.blogger_id == blogger.id,
                 VideoHistory.user_id == user_id
@@ -326,20 +329,26 @@ def get_stats():
                 views_count = int(ps.views or 0)
                 likes_count = int(ps.likes or 0)
                 comments_count = int(ps.comments or 0)
+                shares_count = int(ps.shares or 0)
 
                 blogger_stats['videos'] += videos_count
                 blogger_stats['views'] += views_count
                 blogger_stats['likes'] += likes_count
                 blogger_stats['comments'] += comments_count
+                blogger_stats['shares'] += shares_count
 
                 stats['total_videos'] += videos_count
                 stats['total_views'] += views_count
                 stats['total_likes'] += likes_count
                 stats['total_comments'] += comments_count
+                stats['total_shares'] += shares_count
 
                 if platform in stats['platforms']:
                     stats['platforms'][platform]['videos'] += videos_count
                     stats['platforms'][platform]['views'] += views_count
+                    stats['platforms'][platform]['likes'] += likes_count
+                    stats['platforms'][platform]['comments'] += comments_count
+                    stats['platforms'][platform]['shares'] += shares_count
 
                 if platform == 'youtube':
                     blogger_stats['youtube_views'] = views_count
@@ -402,15 +411,27 @@ def get_blogger_details(blogger_id):
                 'comments': v.comments,
                 'shares': v.shares,
                 'engagement_rate': v.engagement_rate,
+                'upload_date': v.upload_date.isoformat() if v.upload_date else None,
                 'recorded_at': v.recorded_at.isoformat() if v.recorded_at else None
             })
 
         # Статистика по платформам
         platform_stats = {}
         for platform in ['youtube', 'tiktok', 'instagram']:
-            count = len([v for v in videos_data if v['platform'] == platform])
-            views = sum([v['views'] for v in videos_data if v['platform'] == platform])
-            platform_stats[platform] = {'videos': count, 'views': views}
+            pv = [v for v in videos_data if v['platform'] == platform]
+            p_views = sum(v['views'] for v in pv)
+            p_likes = sum(v['likes'] for v in pv)
+            p_comments = sum(v['comments'] for v in pv)
+            p_shares = sum(v['shares'] for v in pv)
+            platform_stats[platform] = {
+                'videos': len(pv), 'views': p_views,
+                'likes': p_likes, 'comments': p_comments, 'shares': p_shares
+            }
+
+        total_views = sum(v['views'] for v in videos_data)
+        total_likes = sum(v['likes'] for v in videos_data)
+        total_comments = sum(v['comments'] for v in videos_data)
+        total_shares = sum(v['shares'] for v in videos_data)
 
         return jsonify({
             'id': blogger.id,
@@ -422,8 +443,10 @@ def get_blogger_details(blogger_id):
             'updated_at': blogger.updated_at.isoformat() if blogger.updated_at else None,
             'videos': videos_data,
             'total_videos': len(videos_data),
-            'total_views': sum(v['views'] for v in videos_data),
-            'total_likes': sum(v['likes'] for v in videos_data),
+            'total_views': total_views,
+            'total_likes': total_likes,
+            'total_comments': total_comments,
+            'total_shares': total_shares,
             'platforms': platform_stats
         })
 

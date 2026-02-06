@@ -757,142 +757,122 @@
             </div></div>`;
     }
 
+    // ===== UBT SCORING =====
+    function ubtScore(b) {
+        const views = b.views || 0;
+        const likes = b.likes || 0;
+        const comments = b.comments || 0;
+        const shares = b.shares || 0;
+        const videos = b.videos || 0;
+        const er = views > 0 ? (likes / views * 100) : 0;
+        const cr = views > 0 ? (comments / views * 100) : 0;
+        const sr = views > 0 ? (shares / views * 100) : 0;
+        const avgV = videos > 0 ? views / videos : 0;
+        const erS = Math.min(er * 6, 30);
+        const crS = Math.min(cr * 10, 20);
+        const srS = Math.min(sr * 20, 20);
+        const avS = Math.min(avgV / 500, 20);
+        const vlS = Math.min(videos / 10, 10);
+        return Math.min(Math.round(erS + crS + srS + avS + vlS), 100);
+    }
+    function ubtGrade(s) {
+        if (s >= 80) return { l: 'A+', c: '#22c55e' };
+        if (s >= 60) return { l: 'A', c: '#4ade80' };
+        if (s >= 45) return { l: 'B', c: '#f59e0b' };
+        if (s >= 30) return { l: 'C', c: '#fb923c' };
+        return { l: 'D', c: '#ef4444' };
+    }
+
     // ===== METRICS (UBT) =====
     function showMetrics() {
         destroyCharts();
-        document.getElementById('pageTitle').textContent='Метрики';
+        document.getElementById('pageTitle').textContent='УБТ Метрики';
         setNav('metrics');
         const s=S||{},bl=s.bloggers||[],pl=s.platforms||{};
         if(!bl.length){document.getElementById('mainContent').innerHTML=`<div class="fade-in"><div class="empty"><i class="fas fa-chart-pie"></i><p>Добавьте блогеров для метрик</p><button class="btn btn-primary" onclick="openAddModal()"><i class="fas fa-plus"></i> Добавить</button></div></div>`;return;}
 
-        // UBT metrics calculations
-        const totalV=s.total_views||0, totalL=s.total_likes||0, totalC=s.total_comments||0, totalVid=s.total_videos||0;
+        const totalV=s.total_views||0,totalL=s.total_likes||0,totalC=s.total_comments||0,totalSh=s.total_shares||0,totalVid=s.total_videos||0;
         const er=totalV>0?((totalL/totalV)*100).toFixed(2):0;
-        const cr=totalV>0?((totalC/totalV)*100).toFixed(3):0; // Comment Rate
+        const cr=totalV>0?((totalC/totalV)*100).toFixed(3):0;
+        const sr=totalV>0?((totalSh/totalV)*100).toFixed(3):0;
         const avgViews=totalVid>0?Math.round(totalV/totalVid):0;
-        const lcr=totalL>0?(totalC/totalL).toFixed(2):0; // Likes-to-Comments ratio
-        const virality=totalV>0?(((totalL+totalC)/totalV)*100).toFixed(2):0; // Virality index
+        const lcr=totalL>0?(totalC/totalL).toFixed(2):0;
+        const virality=totalV>0?(((totalL+totalC+totalSh)/totalV)*100).toFixed(2):0;
 
-        // Per-platform data
+        const blS=bl.map(b=>{
+            const avg=b.avg_views||((b.videos>0)?Math.round((b.views||0)/b.videos):0);
+            return {...b,avg_views:avg,ubt:ubtScore(b),cr:b.views>0?((b.comments||0)/b.views*100):0,sr:b.views>0?((b.shares||0)/b.views*100):0};
+        });
+        const avgUBT=blS.length?Math.round(blS.reduce((a,b)=>a+b.ubt,0)/blS.length):0;
+
         const pLabels=[],pViews=[],pVids=[],pColors=[];
         for(const k of['youtube','tiktok','instagram']){if(pl[k]?.videos>0){pLabels.push(k[0].toUpperCase()+k.slice(1));pViews.push(pl[k].views||0);pVids.push(pl[k].videos);pColors.push(PC[k]);}}
 
-        // Top bloggers
         const top=[...bl].sort((a,b)=>b.views-a.views).slice(0,10);
         const topN=top.map(b=>b.name.length>18?b.name.slice(0,18)+'…':b.name);
         const topV=top.map(b=>b.views);
-
-        // Engagement leaderboard
         const engBl=[...bl].filter(b=>b.engagement>0).sort((a,b)=>b.engagement-a.engagement).slice(0,10);
 
-        // Avg views per platform
-        const avgPP={};
-        for(const k of['youtube','tiktok','instagram']){if(pl[k]?.videos>0)avgPP[k]=Math.round(pl[k].views/pl[k].videos);}
+        const platER={};
+        for(const k of['youtube','tiktok','instagram']){
+            if(pl[k]?.videos>0&&pl[k]?.views>0){
+                const pViews=pl[k].views||0;
+                platER[k]={er:((pl[k].likes||0)/pViews*100).toFixed(2),cr:((pl[k].comments||0)/pViews*100).toFixed(3),avg:Math.round(pViews/pl[k].videos)};
+            }
+        }
 
         const mc=document.getElementById('mainContent');
         mc.innerHTML=`<div class="fade-in">
+            <div class="sec-head"><h3 class="sec-title"><i class="fas fa-bolt" style="color:var(--accent-orange);margin-right:6px"></i> УБТ Показатели</h3></div>
             <div class="metrics-row">
-                <div class="m-card accent"><div class="m-card-label">Avg Views</div><div class="m-card-value">${fmtN(avgViews)}</div><div class="m-card-sub">средний просмотр на видео</div><i class="fas fa-chart-line m-card-icon"></i></div>
+                <div class="m-card accent"><div class="m-card-label">UBT Score</div><div class="m-card-value">${avgUBT}<span style="font-size:14px;color:var(--text-muted)">/100</span></div><div class="m-card-sub">средний по блогерам</div><i class="fas fa-star m-card-icon"></i></div>
                 <div class="m-card green"><div class="m-card-label">ER (Engagement)</div><div class="m-card-value">${er}%</div><div class="m-card-sub">лайки / просмотры</div><i class="fas fa-fire m-card-icon"></i></div>
-                <div class="m-card purple"><div class="m-card-label">CR (Comment Rate)</div><div class="m-card-value">${cr}%</div><div class="m-card-sub">комментарии / просмотры</div><i class="fas fa-comment m-card-icon"></i></div>
-                <div class="m-card orange"><div class="m-card-label">Virality Index</div><div class="m-card-value">${virality}%</div><div class="m-card-sub">(лайки+комменты) / просмотры</div><i class="fas fa-bolt m-card-icon"></i></div>
+                <div class="m-card purple"><div class="m-card-label">CR (Comments)</div><div class="m-card-value">${cr}%</div><div class="m-card-sub">комментарии / просмотры</div><i class="fas fa-comment m-card-icon"></i></div>
+                <div class="m-card orange"><div class="m-card-label">Virality</div><div class="m-card-value">${virality}%</div><div class="m-card-sub">(лайки+комменты+шеры)/views</div><i class="fas fa-bolt m-card-icon"></i></div>
             </div>
             <div class="metrics-row">
-                <div class="m-card"><div class="m-card-label">L/C Ratio</div><div class="m-card-value">${lcr}</div><div class="m-card-sub">лайков на 1 комментарий</div></div>
-                <div class="m-card"><div class="m-card-label">Всего контента</div><div class="m-card-value">${fmtN(totalVid)}</div><div class="m-card-sub">${bl.length} блогеров</div></div>
-                <div class="m-card"><div class="m-card-label">Лучший блогер</div><div class="m-card-value" style="font-size:18px">${top[0]?.name||'-'}</div><div class="m-card-sub">${fmtN(top[0]?.views||0)} просмотров</div></div>
-                <div class="m-card"><div class="m-card-label">Платформ</div><div class="m-card-value">${pLabels.length}</div><div class="m-card-sub">активных каналов</div></div>
+                <div class="m-card"><div class="m-card-label">Avg Views</div><div class="m-card-value">${fmtN(avgViews)}</div><div class="m-card-sub">на видео</div><i class="fas fa-eye m-card-icon"></i></div>
+                <div class="m-card"><div class="m-card-label">Share Rate</div><div class="m-card-value">${sr}%</div><div class="m-card-sub">шеры / просмотры</div><i class="fas fa-share m-card-icon"></i></div>
+                <div class="m-card"><div class="m-card-label">L/C Ratio</div><div class="m-card-value">${lcr}</div><div class="m-card-sub">лайков на 1 комментарий</div><i class="fas fa-balance-scale m-card-icon"></i></div>
+                <div class="m-card"><div class="m-card-label">Контент</div><div class="m-card-value">${fmtN(totalVid)}</div><div class="m-card-sub">${bl.length} блогеров &bull; ${pLabels.length} платформ</div><i class="fas fa-video m-card-icon"></i></div>
             </div>
 
+            <div class="sec-head" style="margin-top:8px"><h3 class="sec-title"><i class="fas fa-layer-group" style="color:var(--accent);margin-right:6px"></i> Платформы</h3></div>
+            ${Object.keys(platER).length?`<div class="plat-grid">${Object.entries(platER).map(([k,v])=>`<div class="plat-card ${k}"><div class="plat-icon"><i class="fab fa-${k}"></i></div><div class="plat-info"><div class="plat-name">${k[0].toUpperCase()+k.slice(1)}</div><div class="plat-stats"><div><strong>${fmtN(pl[k].videos)}</strong> видео</div><div><strong>${fmtN(pl[k].views)}</strong> views</div><div>ER <strong>${v.er}%</strong></div><div>CR <strong>${v.cr}%</strong></div><div>~<strong>${fmtN(v.avg)}</strong>/vid</div></div></div></div>`).join('')}</div>`:''}
+
             <div class="charts-row">
-                <div class="chart-box"><div class="chart-title"><i class="fas fa-chart-pie"></i> Распределение просмотров</div><div class="chart-area"><canvas id="chPlatViews"></canvas></div></div>
+                <div class="chart-box"><div class="chart-title"><i class="fas fa-chart-pie"></i> Просмотры по платформам</div><div class="chart-area"><canvas id="chPlatViews"></canvas></div></div>
                 <div class="chart-box"><div class="chart-title"><i class="fas fa-chart-bar"></i> Топ по просмотрам</div><div class="chart-area"><canvas id="chTopBlog"></canvas></div></div>
             </div>
             <div class="charts-row">
                 <div class="chart-box"><div class="chart-title"><i class="fas fa-fire"></i> ER по блогерам</div><div class="chart-area"><canvas id="chER"></canvas></div></div>
-                <div class="chart-box"><div class="chart-title"><i class="fas fa-video"></i> Контент по платформам</div><div class="chart-area"><canvas id="chPlatVids"></canvas></div></div>
+                <div class="chart-box"><div class="chart-title"><i class="fas fa-star"></i> UBT Score</div><div class="chart-area"><canvas id="chUBT"></canvas></div></div>
             </div>
 
-            ${Object.keys(avgPP).length?`<div class="chart-box" style="margin-bottom:20px"><div class="chart-title"><i class="fas fa-tachometer-alt"></i> Avg Views по платформам</div>
-                <div class="m-list">${Object.entries(avgPP).map(([k,v])=>`<div class="m-list-row"><div class="m-list-label"><span class="m-list-dot" style="background:${PC[k]}"></span><i class="fab fa-${k}" style="color:${PC[k]};width:18px"></i>${k[0].toUpperCase()+k.slice(1)}</div><div class="m-list-val">${fmtN(v)}</div></div>`).join('')}</div></div>`:''}
-
-            <div class="chart-box"><div class="chart-title"><i class="fas fa-table"></i> Детализация</div>
-                <div class="dtable" style="border:none"><table><thead><tr><th>Блогер</th><th class="c">Платформы</th><th class="r">Видео</th><th class="r">Просмотры</th><th class="r">ER</th><th class="r">CR</th></tr></thead><tbody>
-                ${bl.map(b=>{const ps=[];if(b.youtube)ps.push('<i class="fab fa-youtube" style="color:var(--youtube)"></i>');if(b.tiktok)ps.push('<i class="fab fa-tiktok" style="color:var(--tiktok)"></i>');if(b.instagram)ps.push('<i class="fab fa-instagram" style="color:var(--instagram)"></i>');
-                const bcr=b.views>0?((b.comments||0)/b.views*100).toFixed(3):0;
-                return`<tr style="cursor:pointer" onclick="showDetail(${b.id})"><td class="b">${b.name}</td><td class="c" style="font-size:14px;display:flex;gap:6px;justify-content:center">${ps.join('')}</td><td class="r">${fmtN(b.videos||0)}</td><td class="r b">${fmtN(b.views||0)}</td><td class="r">${b.engagement||0}%</td><td class="r">${bcr}%</td></tr>`;}).join('')}
+            <div class="sec-head" style="margin-top:8px"><h3 class="sec-title"><i class="fas fa-trophy" style="color:var(--accent-orange);margin-right:6px"></i> УБТ Рейтинг</h3></div>
+            <div class="chart-box">
+                <div class="dtable" style="border:none"><table><thead><tr><th>Блогер</th><th class="c">UBT</th><th class="c">Платформы</th><th class="r">Видео</th><th class="r">Views</th><th class="r">Лайки</th><th class="r">Комменты</th><th class="r">ER%</th><th class="r">CR%</th><th class="r">SR%</th><th class="r">Avg Views</th></tr></thead><tbody>
+                ${[...blS].sort((a,b)=>b.ubt-a.ubt).map(b=>{const g=ubtGrade(b.ubt);const ps=[];if(b.youtube)ps.push('<i class="fab fa-youtube" style="color:var(--youtube)"></i>');if(b.tiktok)ps.push('<i class="fab fa-tiktok" style="color:var(--tiktok)"></i>');if(b.instagram)ps.push('<i class="fab fa-instagram" style="color:var(--instagram)"></i>');
+                return`<tr style="cursor:pointer" onclick="showDetail(${b.id})"><td class="b">${b.name}</td><td class="c"><span style="display:inline-block;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700;background:${g.c}22;color:${g.c}">${b.ubt} ${g.l}</span></td><td class="c" style="font-size:14px">${ps.join(' ')}</td><td class="r">${fmtN(b.videos||0)}</td><td class="r b">${fmtN(b.views||0)}</td><td class="r">${fmtN(b.likes||0)}</td><td class="r">${fmtN(b.comments||0)}</td><td class="r">${b.engagement||0}%</td><td class="r">${b.cr.toFixed(3)}%</td><td class="r">${b.sr.toFixed(3)}%</td><td class="r">${fmtN(b.avg_views||0)}</td></tr>`;}).join('')}
                 </tbody></table></div></div>
         </div>`;
 
         requestAnimationFrame(()=>{
-            // Modern dark theme defaults
-            Chart.defaults.color='#94a3b8';
-            Chart.defaults.borderColor='rgba(30,41,59,0.4)';
-            Chart.defaults.font.family="'Inter', sans-serif";
+            Chart.defaults.color='#94a3b8';Chart.defaults.borderColor='rgba(30,41,59,0.4)';Chart.defaults.font.family="'Inter', sans-serif";
             const ttip={backgroundColor:'rgba(15,23,42,0.95)',titleColor:'#f1f5f9',bodyColor:'#cbd5e1',borderColor:'rgba(59,130,246,0.15)',borderWidth:1,cornerRadius:10,padding:{x:12,y:10},titleFont:{size:12,weight:'600'},bodyFont:{size:11},displayColors:true,boxPadding:4,caretSize:6};
 
-            // 1. Platform Views — Doughnut
             if(pLabels.length){
-                charts.pv=new Chart(document.getElementById('chPlatViews'),{
-                    type:'doughnut',
-                    data:{labels:pLabels,datasets:[{data:pViews,backgroundColor:pColors.map(c=>c+'bb'),borderColor:'rgba(21,29,46,0.9)',borderWidth:3,hoverOffset:10,hoverBorderColor:'rgba(255,255,255,0.2)',spacing:2}]},
-                    options:{responsive:true,maintainAspectRatio:false,cutout:'70%',
-                        animation:{animateRotate:true,duration:800,easing:'easeOutQuart'},
-                        plugins:{
-                            legend:{position:'bottom',labels:{padding:20,usePointStyle:true,pointStyle:'circle',font:{size:12,weight:'500'}}},
-                            tooltip:{...ttip,callbacks:{label:ctx=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);const p=t>0?((ctx.raw/t)*100).toFixed(1):0;return` ${ctx.label}: ${fmtN(ctx.raw)} (${p}%)`;}}}
-                        }
-                    }
-                });
-            }
+                charts.pv=new Chart(document.getElementById('chPlatViews'),{type:'doughnut',data:{labels:pLabels,datasets:[{data:pViews,backgroundColor:pColors.map(c=>c+'bb'),borderColor:'rgba(21,29,46,0.9)',borderWidth:3,hoverOffset:10,spacing:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'70%',animation:{animateRotate:true,duration:800,easing:'easeOutQuart'},plugins:{legend:{position:'bottom',labels:{padding:20,usePointStyle:true,pointStyle:'circle',font:{size:12,weight:'500'}}},tooltip:{...ttip,callbacks:{label:ctx=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);const p=t>0?((ctx.raw/t)*100).toFixed(1):0;return` ${ctx.label}: ${fmtN(ctx.raw)} (${p}%)`;}}}}}}); }
 
-            // 2. Top Bloggers — Horizontal Bar
             if(topN.length){
-                charts.tb=new Chart(document.getElementById('chTopBlog'),{
-                    type:'bar',
-                    data:{labels:topN,datasets:[{data:topV,backgroundColor:top.map((_,i)=>C[i%C.length]+'55'),borderColor:top.map((_,i)=>C[i%C.length]+'cc'),borderWidth:1,borderRadius:6,barPercentage:0.65,borderSkipped:false}]},
-                    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
-                        animation:{duration:700,easing:'easeOutQuart'},
-                        plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:ctx=>` ${fmtN(ctx.raw)} просмотров`}}},
-                        scales:{
-                            x:{grid:{color:'rgba(30,41,59,0.3)',drawBorder:false},ticks:{callback:v=>fmtN(v),font:{size:10},padding:4},border:{display:false}},
-                            y:{grid:{display:false},ticks:{font:{size:11,weight:'500'},padding:8},border:{display:false}}
-                        }
-                    }
-                });
-            }
+                charts.tb=new Chart(document.getElementById('chTopBlog'),{type:'bar',data:{labels:topN,datasets:[{data:topV,backgroundColor:top.map((_,i)=>C[i%C.length]+'55'),borderColor:top.map((_,i)=>C[i%C.length]+'cc'),borderWidth:1,borderRadius:6,barPercentage:0.65,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',animation:{duration:700,easing:'easeOutQuart'},plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:ctx=>` ${fmtN(ctx.raw)} просмотров`}}},scales:{x:{grid:{color:'rgba(30,41,59,0.3)',drawBorder:false},ticks:{callback:v=>fmtN(v),font:{size:10},padding:4},border:{display:false}},y:{grid:{display:false},ticks:{font:{size:11,weight:'500'},padding:8},border:{display:false}}}}}); }
 
-            // 3. ER — Vertical Bar
             if(engBl.length){
-                charts.er=new Chart(document.getElementById('chER'),{
-                    type:'bar',
-                    data:{labels:engBl.map(b=>b.name.length>18?b.name.slice(0,18)+'...':b.name),datasets:[{data:engBl.map(b=>b.engagement),backgroundColor:'rgba(167,139,250,0.35)',borderColor:'rgba(167,139,250,0.8)',borderWidth:1,borderRadius:6,barPercentage:0.65,hoverBackgroundColor:'rgba(167,139,250,0.55)'}]},
-                    options:{responsive:true,maintainAspectRatio:false,
-                        animation:{duration:700,easing:'easeOutQuart'},
-                        plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:ctx=>` ER: ${ctx.raw}%`}}},
-                        scales:{
-                            x:{grid:{display:false},ticks:{font:{size:10},maxRotation:45,padding:4},border:{display:false}},
-                            y:{grid:{color:'rgba(30,41,59,0.3)',drawBorder:false},ticks:{callback:v=>v+'%',font:{size:10},padding:4},border:{display:false}}
-                        }
-                    }
-                });
-            }
+                charts.er=new Chart(document.getElementById('chER'),{type:'bar',data:{labels:engBl.map(b=>b.name.length>18?b.name.slice(0,18)+'...':b.name),datasets:[{data:engBl.map(b=>b.engagement),backgroundColor:'rgba(167,139,250,0.35)',borderColor:'rgba(167,139,250,0.8)',borderWidth:1,borderRadius:6,barPercentage:0.65,hoverBackgroundColor:'rgba(167,139,250,0.55)'}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:700,easing:'easeOutQuart'},plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:ctx=>` ER: ${ctx.raw}%`}}},scales:{x:{grid:{display:false},ticks:{font:{size:10},maxRotation:45,padding:4},border:{display:false}},y:{grid:{color:'rgba(30,41,59,0.3)',drawBorder:false},ticks:{callback:v=>v+'%',font:{size:10},padding:4},border:{display:false}}}}}); }
 
-            // 4. Platform Videos — Bar
-            if(pLabels.length){
-                charts.pvd=new Chart(document.getElementById('chPlatVids'),{
-                    type:'bar',
-                    data:{labels:pLabels,datasets:[{data:pVids,backgroundColor:pColors.map(c=>c+'55'),borderColor:pColors.map(c=>c+'cc'),borderWidth:1,borderRadius:8,barPercentage:0.45,hoverBackgroundColor:pColors.map(c=>c+'88')}]},
-                    options:{responsive:true,maintainAspectRatio:false,
-                        animation:{duration:700,easing:'easeOutQuart'},
-                        plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:ctx=>` ${ctx.raw} видео`}}},
-                        scales:{
-                            x:{grid:{display:false},border:{display:false}},
-                            y:{grid:{color:'rgba(30,41,59,0.3)',drawBorder:false},ticks:{font:{size:10},padding:4},border:{display:false}}
-                        }
-                    }
-                });
-            }
+            const ubtSorted=[...blS].sort((a,b)=>b.ubt-a.ubt).slice(0,10);
+            if(ubtSorted.length){
+                charts.ubt=new Chart(document.getElementById('chUBT'),{type:'bar',data:{labels:ubtSorted.map(b=>b.name.length>18?b.name.slice(0,18)+'…':b.name),datasets:[{data:ubtSorted.map(b=>b.ubt),backgroundColor:ubtSorted.map(b=>{const g=ubtGrade(b.ubt);return g.c+'55';}),borderColor:ubtSorted.map(b=>{const g=ubtGrade(b.ubt);return g.c+'cc';}),borderWidth:1,borderRadius:6,barPercentage:0.65,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',animation:{duration:700,easing:'easeOutQuart'},plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:ctx=>{const g=ubtGrade(ctx.raw);return` UBT: ${ctx.raw}/100 (${g.l})`;}}}},scales:{x:{max:100,grid:{color:'rgba(30,41,59,0.3)',drawBorder:false},ticks:{font:{size:10},padding:4},border:{display:false}},y:{grid:{display:false},ticks:{font:{size:11,weight:'500'},padding:8},border:{display:false}}}}}); }
         });
     }
 
@@ -940,47 +920,67 @@
             document.getElementById('pageTitle').textContent=d.name;
             setNav(null);
             const pl=d.platforms||{};
+            const vids=d.videos||[];
+            const tV=d.total_views||0,tL=d.total_likes||0,tC=d.total_comments||0,tSh=d.total_shares||0,tVid=d.total_videos||0;
+            const dER=tV>0?((tL/tV)*100).toFixed(2):0;
+            const dCR=tV>0?((tC/tV)*100).toFixed(3):0;
+            const dSR=tV>0?((tSh/tV)*100).toFixed(3):0;
+            const dAvg=tVid>0?Math.round(tV/tVid):0;
+            const dVir=tV>0?(((tL+tC+tSh)/tV)*100).toFixed(2):0;
+            const bUBT=ubtScore({views:tV,likes:tL,comments:tC,shares:tSh,videos:tVid});
+            const bG=ubtGrade(bUBT);
+
             const dpL=[],dpV=[],dpC=[];
             for(const k of['youtube','tiktok','instagram']){if(pl[k]?.videos>0){dpL.push(k[0].toUpperCase()+k.slice(1));dpV.push(pl[k].views||0);dpC.push(PC[k]);}}
 
+            // Platform ER breakdown
+            const pBreak=[];
+            for(const k of['youtube','tiktok','instagram']){
+                if(pl[k]?.videos>0){
+                    const pv=pl[k].views||0;
+                    const pER=pv>0?((pl[k].likes||0)/pv*100).toFixed(2):0;
+                    const pCR=pv>0?((pl[k].comments||0)/pv*100).toFixed(3):0;
+                    const pAvg=Math.round(pv/pl[k].videos);
+                    pBreak.push({name:k[0].toUpperCase()+k.slice(1),k,vids:pl[k].videos,views:pv,er:pER,cr:pCR,avg:pAvg});
+                }
+            }
+
             const mc=document.getElementById('mainContent');
             mc.innerHTML=`<div class="fade-in">
-                ${renderPlatforms(pl)}
-                <div class="charts-row">
-                    <div class="chart-box"><div class="chart-title">Статистика</div>
-                        <div class="metrics-row" style="margin:0">
-                            <div class="m-card accent" style="margin:0"><div class="m-card-label">Видео</div><div class="m-card-value">${fmtN(d.total_videos||0)}</div></div>
-                            <div class="m-card green" style="margin:0"><div class="m-card-label">Просмотры</div><div class="m-card-value">${fmtN(d.total_views||0)}</div></div>
-                            <div class="m-card purple" style="margin:0"><div class="m-card-label">Лайки</div><div class="m-card-value">${fmtN(d.total_likes||0)}</div></div>
-                        </div>
-                    </div>
-                    ${dpL.length>1?`<div class="chart-box"><div class="chart-title">Просмотры по платформам</div><div class="chart-area" style="height:200px"><canvas id="chDetPlat"></canvas></div></div>`:''}
+                <div class="metrics-row">
+                    <div class="m-card accent"><div class="m-card-label">UBT Score</div><div class="m-card-value"><span style="color:${bG.c}">${bUBT}</span><span style="font-size:14px;color:var(--text-muted)">/100 ${bG.l}</span></div><i class="fas fa-star m-card-icon"></i></div>
+                    <div class="m-card green"><div class="m-card-label">ER</div><div class="m-card-value">${dER}%</div><div class="m-card-sub">${fmtN(tL)} лайков</div><i class="fas fa-fire m-card-icon"></i></div>
+                    <div class="m-card purple"><div class="m-card-label">CR</div><div class="m-card-value">${dCR}%</div><div class="m-card-sub">${fmtN(tC)} комментов</div><i class="fas fa-comment m-card-icon"></i></div>
+                    <div class="m-card orange"><div class="m-card-label">Virality</div><div class="m-card-value">${dVir}%</div><div class="m-card-sub">${fmtN(tSh)} шеров</div><i class="fas fa-bolt m-card-icon"></i></div>
                 </div>
-                <div class="sec-head"><h3 class="sec-title">Топ видео</h3>
+                <div class="metrics-row">
+                    <div class="m-card"><div class="m-card-label">Видео</div><div class="m-card-value">${fmtN(tVid)}</div><i class="fas fa-video m-card-icon"></i></div>
+                    <div class="m-card"><div class="m-card-label">Просмотры</div><div class="m-card-value">${fmtN(tV)}</div><i class="fas fa-eye m-card-icon"></i></div>
+                    <div class="m-card"><div class="m-card-label">Avg Views</div><div class="m-card-value">${fmtN(dAvg)}</div><i class="fas fa-chart-line m-card-icon"></i></div>
+                    <div class="m-card"><div class="m-card-label">Share Rate</div><div class="m-card-value">${dSR}%</div><i class="fas fa-share m-card-icon"></i></div>
+                </div>
+
+                ${pBreak.length?`<div class="sec-head" style="margin-top:4px"><h3 class="sec-title"><i class="fas fa-layer-group" style="color:var(--accent);margin-right:6px"></i> По платформам</h3></div>
+                <div class="plat-grid">${pBreak.map(p=>`<div class="plat-card ${p.k}"><div class="plat-icon"><i class="fab fa-${p.k}"></i></div><div class="plat-info"><div class="plat-name">${p.name}</div><div class="plat-stats"><div><strong>${fmtN(p.vids)}</strong> видео</div><div><strong>${fmtN(p.views)}</strong> views</div><div>ER <strong>${p.er}%</strong></div><div>CR <strong>${p.cr}%</strong></div><div>~<strong>${fmtN(p.avg)}</strong>/vid</div></div></div></div>`).join('')}</div>`:''}
+
+                ${dpL.length>1?`<div class="charts-row"><div class="chart-box"><div class="chart-title"><i class="fas fa-chart-pie"></i> Views по платформам</div><div class="chart-area" style="height:220px"><canvas id="chDetPlat"></canvas></div></div></div>`:''}
+
+                <div class="sec-head" style="margin-top:4px"><h3 class="sec-title"><i class="fas fa-video" style="color:var(--accent-purple);margin-right:6px"></i> Все видео (${fmtN(vids.length)})</h3>
                     <div style="display:flex;gap:6px">
                         <button class="btn btn-ghost" onclick="parseBlogger(${id})"><i class="fas fa-sync-alt"></i> Обновить</button>
+                        <button class="btn btn-ghost" onclick="openEditModal(${id})"><i class="fas fa-edit"></i> Редактировать</button>
                         <button class="btn btn-danger" onclick="openDelModal(${id},'${d.name.replace(/'/g,"\\'")}')"><i class="fas fa-trash"></i> Удалить</button>
                     </div>
                 </div>
-                ${d.videos?.length?`<div class="dtable"><table><thead><tr><th>Видео</th><th class="c">Платформа</th><th class="r">Просмотры</th><th class="r">Лайки</th></tr></thead><tbody>
-                ${d.videos.map(v=>`<tr><td><a href="${v.url}" target="_blank" rel="noopener">${v.title||'Без названия'}</a></td><td class="c"><span class="p-tag ${v.platform}"><i class="fab fa-${v.platform}"></i></span></td><td class="r b">${fmtN(v.views||0)}</td><td class="r">${fmtN(v.likes||0)}</td></tr>`).join('')}
+                ${vids.length?`<div class="dtable"><table><thead><tr><th>Видео</th><th class="c">Платформа</th><th class="r">Views</th><th class="r">Likes</th><th class="r">Comments</th><th class="r">Shares</th><th class="r">ER%</th><th class="c">Дата</th></tr></thead><tbody>
+                ${vids.map(v=>{const vER=v.views>0?((v.likes||0)/v.views*100).toFixed(2):'0';const dt=v.upload_date||v.recorded_at;const fdt=dt?new Date(dt).toLocaleDateString('ru-RU',{day:'2-digit',month:'2-digit',year:'2-digit'}):'—';
+                return`<tr><td><a href="${v.url}" target="_blank" rel="noopener">${v.title||'Без названия'}</a></td><td class="c"><span class="p-tag ${v.platform}"><i class="fab fa-${v.platform}"></i></span></td><td class="r b">${fmtN(v.views||0)}</td><td class="r">${fmtN(v.likes||0)}</td><td class="r">${fmtN(v.comments||0)}</td><td class="r">${fmtN(v.shares||0)}</td><td class="r">${vER}%</td><td class="c" style="font-size:11px;color:var(--text-muted)">${fdt}</td></tr>`;}).join('')}
                 </tbody></table></div>`:`<div class="empty"><i class="fas fa-video-slash"></i><p>Видео не загружены</p><button class="btn btn-primary" onclick="parseBlogger(${id})"><i class="fas fa-download"></i> Загрузить</button></div>`}
             </div>`;
 
             if(dpL.length>1){requestAnimationFrame(()=>{
                 const ttip={backgroundColor:'rgba(15,23,42,0.95)',titleColor:'#f1f5f9',bodyColor:'#cbd5e1',borderColor:'rgba(59,130,246,0.15)',borderWidth:1,cornerRadius:10,padding:{x:12,y:10},titleFont:{size:12,weight:'600'},bodyFont:{size:11},displayColors:true,boxPadding:4};
-                charts.dp=new Chart(document.getElementById('chDetPlat'),{
-                    type:'doughnut',
-                    data:{labels:dpL,datasets:[{data:dpV,backgroundColor:dpC.map(c=>c+'bb'),borderColor:'rgba(21,29,46,0.9)',borderWidth:3,hoverOffset:10,hoverBorderColor:'rgba(255,255,255,0.2)',spacing:2}]},
-                    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
-                        animation:{animateRotate:true,duration:800,easing:'easeOutQuart'},
-                        plugins:{
-                            legend:{position:'bottom',labels:{padding:16,usePointStyle:true,pointStyle:'circle',font:{size:11,weight:'500'}}},
-                            tooltip:{...ttip,callbacks:{label:ctx=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);const p=t>0?((ctx.raw/t)*100).toFixed(1):0;return` ${ctx.label}: ${fmtN(ctx.raw)} (${p}%)`;}}}
-                        }
-                    }
-                });
-            });}
+                charts.dp=new Chart(document.getElementById('chDetPlat'),{type:'doughnut',data:{labels:dpL,datasets:[{data:dpV,backgroundColor:dpC.map(c=>c+'bb'),borderColor:'rgba(21,29,46,0.9)',borderWidth:3,hoverOffset:10,spacing:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',animation:{animateRotate:true,duration:800,easing:'easeOutQuart'},plugins:{legend:{position:'bottom',labels:{padding:16,usePointStyle:true,pointStyle:'circle',font:{size:11,weight:'500'}}},tooltip:{...ttip,callbacks:{label:ctx=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);const p=t>0?((ctx.raw/t)*100).toFixed(1):0;return` ${ctx.label}: ${fmtN(ctx.raw)} (${p}%)`;}}}}}}); });}
         } catch(e){toast('Ошибка загрузки','error');}
         finally{document.getElementById('loadingOverlay').style.display='none';}
     }
