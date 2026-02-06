@@ -344,19 +344,30 @@
 
         .chart-box {
             background: var(--bg-card); border: 1px solid var(--border);
-            border-radius: 12px; padding: 20px;
-            transition: all 0.2s ease;
+            border-radius: 14px; padding: 22px;
+            transition: all 0.25s ease;
+            position: relative; overflow: hidden;
         }
 
-        .chart-box:hover { border-color: var(--border-light); }
+        .chart-box::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 1px;
+            background: linear-gradient(90deg, transparent, rgba(59,130,246,0.15), transparent);
+        }
+
+        .chart-box:hover {
+            border-color: var(--border-light);
+            box-shadow: 0 4px 24px rgba(0,0,0,0.2);
+            transform: translateY(-1px);
+        }
 
         .chart-title {
-            font-size: 12px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.5px; color: var(--text-muted); margin-bottom: 14px;
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.8px; color: var(--text-muted); margin-bottom: 16px;
             display: flex; align-items: center; gap: 8px;
         }
 
-        .chart-title i { font-size: 14px; opacity: 0.5; }
+        .chart-title i { font-size: 13px; opacity: 0.4; }
 
         .chart-area { position: relative; width: 100%; height: 280px; }
 
@@ -764,7 +775,7 @@
 
         // Per-platform data
         const pLabels=[],pViews=[],pVids=[],pColors=[];
-        for(const k of['youtube','tiktok','instagram']){if(pl[k]?.views>0){pLabels.push(k[0].toUpperCase()+k.slice(1));pViews.push(pl[k].views);pVids.push(pl[k].videos);pColors.push(PC[k]);}}
+        for(const k of['youtube','tiktok','instagram']){if(pl[k]?.videos>0){pLabels.push(k[0].toUpperCase()+k.slice(1));pViews.push(pl[k].views||0);pVids.push(pl[k].videos);pColors.push(PC[k]);}}
 
         // Top bloggers
         const top=[...bl].sort((a,b)=>b.views-a.views).slice(0,10);
@@ -814,11 +825,74 @@
         </div>`;
 
         requestAnimationFrame(()=>{
-            Chart.defaults.color='#64748b';Chart.defaults.borderColor='#1e293b';
-            if(pLabels.length){charts.pv=new Chart(document.getElementById('chPlatViews'),{type:'doughnut',data:{labels:pLabels,datasets:[{data:pViews,backgroundColor:pColors.map(c=>c+'cc'),borderColor:'#151d2e',borderWidth:3,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,cutout:'65%',plugins:{legend:{position:'bottom',labels:{padding:16,font:{size:12,family:'Inter'}}},tooltip:{callbacks:{label:ctx=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return`${ctx.label}: ${fmtN(ctx.raw)} (${((ctx.raw/t)*100).toFixed(1)}%)`;}}}}}})}
-            if(topN.length){charts.tb=new Chart(document.getElementById('chTopBlog'),{type:'bar',data:{labels:topN,datasets:[{data:topV,backgroundColor:top.map((_,i)=>C[i%C.length]+'88'),borderColor:top.map((_,i)=>C[i%C.length]),borderWidth:1,borderRadius:4,barPercentage:0.7}]},options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmtN(ctx.raw)+' просмотров'}}},scales:{x:{grid:{color:'rgba(30,41,59,0.5)'},ticks:{callback:v=>fmtN(v),font:{family:'Inter'}}},y:{grid:{display:false},ticks:{font:{family:'Inter',size:11}}}}}})}
-            if(engBl.length){charts.er=new Chart(document.getElementById('chER'),{type:'bar',data:{labels:engBl.map(b=>b.name.length>18?b.name.slice(0,18)+'…':b.name),datasets:[{data:engBl.map(b=>b.engagement),backgroundColor:'rgba(167,139,250,0.5)',borderColor:'#a78bfa',borderWidth:1,borderRadius:4,barPercentage:0.7}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>ctx.raw+'%'}}},scales:{x:{grid:{display:false},ticks:{font:{family:'Inter',size:10},maxRotation:45}},y:{grid:{color:'rgba(30,41,59,0.5)'},ticks:{callback:v=>v+'%',font:{family:'Inter'}}}}}})}
-            if(pLabels.length){charts.pvd=new Chart(document.getElementById('chPlatVids'),{type:'bar',data:{labels:pLabels,datasets:[{data:pVids,backgroundColor:pColors.map(c=>c+'88'),borderColor:pColors,borderWidth:1,borderRadius:6,barPercentage:0.5}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{grid:{display:false}},y:{grid:{color:'rgba(30,41,59,0.5)'}}}}})}
+            // Modern dark theme defaults
+            Chart.defaults.color='#94a3b8';
+            Chart.defaults.borderColor='rgba(30,41,59,0.4)';
+            Chart.defaults.font.family="'Inter', sans-serif";
+            const ttip={backgroundColor:'rgba(15,23,42,0.95)',titleColor:'#f1f5f9',bodyColor:'#cbd5e1',borderColor:'rgba(59,130,246,0.15)',borderWidth:1,cornerRadius:10,padding:{x:12,y:10},titleFont:{size:12,weight:'600'},bodyFont:{size:11},displayColors:true,boxPadding:4,caretSize:6};
+
+            // 1. Platform Views — Doughnut
+            if(pLabels.length){
+                charts.pv=new Chart(document.getElementById('chPlatViews'),{
+                    type:'doughnut',
+                    data:{labels:pLabels,datasets:[{data:pViews,backgroundColor:pColors.map(c=>c+'bb'),borderColor:'rgba(21,29,46,0.9)',borderWidth:3,hoverOffset:10,hoverBorderColor:'rgba(255,255,255,0.2)',spacing:2}]},
+                    options:{responsive:true,maintainAspectRatio:false,cutout:'70%',
+                        animation:{animateRotate:true,duration:800,easing:'easeOutQuart'},
+                        plugins:{
+                            legend:{position:'bottom',labels:{padding:20,usePointStyle:true,pointStyle:'circle',font:{size:12,weight:'500'}}},
+                            tooltip:{...ttip,callbacks:{label:ctx=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);const p=t>0?((ctx.raw/t)*100).toFixed(1):0;return` ${ctx.label}: ${fmtN(ctx.raw)} (${p}%)`;}}}
+                        }
+                    }
+                });
+            }
+
+            // 2. Top Bloggers — Horizontal Bar
+            if(topN.length){
+                charts.tb=new Chart(document.getElementById('chTopBlog'),{
+                    type:'bar',
+                    data:{labels:topN,datasets:[{data:topV,backgroundColor:top.map((_,i)=>C[i%C.length]+'55'),borderColor:top.map((_,i)=>C[i%C.length]+'cc'),borderWidth:1,borderRadius:6,barPercentage:0.65,borderSkipped:false}]},
+                    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',
+                        animation:{duration:700,easing:'easeOutQuart'},
+                        plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:ctx=>` ${fmtN(ctx.raw)} просмотров`}}},
+                        scales:{
+                            x:{grid:{color:'rgba(30,41,59,0.3)',drawBorder:false},ticks:{callback:v=>fmtN(v),font:{size:10},padding:4},border:{display:false}},
+                            y:{grid:{display:false},ticks:{font:{size:11,weight:'500'},padding:8},border:{display:false}}
+                        }
+                    }
+                });
+            }
+
+            // 3. ER — Vertical Bar
+            if(engBl.length){
+                charts.er=new Chart(document.getElementById('chER'),{
+                    type:'bar',
+                    data:{labels:engBl.map(b=>b.name.length>18?b.name.slice(0,18)+'...':b.name),datasets:[{data:engBl.map(b=>b.engagement),backgroundColor:'rgba(167,139,250,0.35)',borderColor:'rgba(167,139,250,0.8)',borderWidth:1,borderRadius:6,barPercentage:0.65,hoverBackgroundColor:'rgba(167,139,250,0.55)'}]},
+                    options:{responsive:true,maintainAspectRatio:false,
+                        animation:{duration:700,easing:'easeOutQuart'},
+                        plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:ctx=>` ER: ${ctx.raw}%`}}},
+                        scales:{
+                            x:{grid:{display:false},ticks:{font:{size:10},maxRotation:45,padding:4},border:{display:false}},
+                            y:{grid:{color:'rgba(30,41,59,0.3)',drawBorder:false},ticks:{callback:v=>v+'%',font:{size:10},padding:4},border:{display:false}}
+                        }
+                    }
+                });
+            }
+
+            // 4. Platform Videos — Bar
+            if(pLabels.length){
+                charts.pvd=new Chart(document.getElementById('chPlatVids'),{
+                    type:'bar',
+                    data:{labels:pLabels,datasets:[{data:pVids,backgroundColor:pColors.map(c=>c+'55'),borderColor:pColors.map(c=>c+'cc'),borderWidth:1,borderRadius:8,barPercentage:0.45,hoverBackgroundColor:pColors.map(c=>c+'88')}]},
+                    options:{responsive:true,maintainAspectRatio:false,
+                        animation:{duration:700,easing:'easeOutQuart'},
+                        plugins:{legend:{display:false},tooltip:{...ttip,callbacks:{label:ctx=>` ${ctx.raw} видео`}}},
+                        scales:{
+                            x:{grid:{display:false},border:{display:false}},
+                            y:{grid:{color:'rgba(30,41,59,0.3)',drawBorder:false},ticks:{font:{size:10},padding:4},border:{display:false}}
+                        }
+                    }
+                });
+            }
         });
     }
 
@@ -867,7 +941,7 @@
             setNav(null);
             const pl=d.platforms||{};
             const dpL=[],dpV=[],dpC=[];
-            for(const k of['youtube','tiktok','instagram']){if(pl[k]?.views>0){dpL.push(k[0].toUpperCase()+k.slice(1));dpV.push(pl[k].views);dpC.push(PC[k]);}}
+            for(const k of['youtube','tiktok','instagram']){if(pl[k]?.videos>0){dpL.push(k[0].toUpperCase()+k.slice(1));dpV.push(pl[k].views||0);dpC.push(PC[k]);}}
 
             const mc=document.getElementById('mainContent');
             mc.innerHTML=`<div class="fade-in">
@@ -889,11 +963,24 @@
                     </div>
                 </div>
                 ${d.videos?.length?`<div class="dtable"><table><thead><tr><th>Видео</th><th class="c">Платформа</th><th class="r">Просмотры</th><th class="r">Лайки</th></tr></thead><tbody>
-                ${d.videos.slice(0,30).map(v=>`<tr><td><a href="${v.url}" target="_blank" rel="noopener">${v.title||'Без названия'}</a></td><td class="c"><span class="p-tag ${v.platform}"><i class="fab fa-${v.platform}"></i></span></td><td class="r b">${fmtN(v.views||0)}</td><td class="r">${fmtN(v.likes||0)}</td></tr>`).join('')}
+                ${d.videos.map(v=>`<tr><td><a href="${v.url}" target="_blank" rel="noopener">${v.title||'Без названия'}</a></td><td class="c"><span class="p-tag ${v.platform}"><i class="fab fa-${v.platform}"></i></span></td><td class="r b">${fmtN(v.views||0)}</td><td class="r">${fmtN(v.likes||0)}</td></tr>`).join('')}
                 </tbody></table></div>`:`<div class="empty"><i class="fas fa-video-slash"></i><p>Видео не загружены</p><button class="btn btn-primary" onclick="parseBlogger(${id})"><i class="fas fa-download"></i> Загрузить</button></div>`}
             </div>`;
 
-            if(dpL.length>1){requestAnimationFrame(()=>{charts.dp=new Chart(document.getElementById('chDetPlat'),{type:'doughnut',data:{labels:dpL,datasets:[{data:dpV,backgroundColor:dpC.map(c=>c+'bb'),borderColor:'#151d2e',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'55%',plugins:{legend:{position:'bottom',labels:{padding:12,font:{size:11,family:'Inter'}}},tooltip:{callbacks:{label:ctx=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);return`${ctx.label}: ${fmtN(ctx.raw)} (${((ctx.raw/t)*100).toFixed(1)}%)`;}}}}}});});}
+            if(dpL.length>1){requestAnimationFrame(()=>{
+                const ttip={backgroundColor:'rgba(15,23,42,0.95)',titleColor:'#f1f5f9',bodyColor:'#cbd5e1',borderColor:'rgba(59,130,246,0.15)',borderWidth:1,cornerRadius:10,padding:{x:12,y:10},titleFont:{size:12,weight:'600'},bodyFont:{size:11},displayColors:true,boxPadding:4};
+                charts.dp=new Chart(document.getElementById('chDetPlat'),{
+                    type:'doughnut',
+                    data:{labels:dpL,datasets:[{data:dpV,backgroundColor:dpC.map(c=>c+'bb'),borderColor:'rgba(21,29,46,0.9)',borderWidth:3,hoverOffset:10,hoverBorderColor:'rgba(255,255,255,0.2)',spacing:2}]},
+                    options:{responsive:true,maintainAspectRatio:false,cutout:'65%',
+                        animation:{animateRotate:true,duration:800,easing:'easeOutQuart'},
+                        plugins:{
+                            legend:{position:'bottom',labels:{padding:16,usePointStyle:true,pointStyle:'circle',font:{size:11,weight:'500'}}},
+                            tooltip:{...ttip,callbacks:{label:ctx=>{const t=ctx.dataset.data.reduce((a,b)=>a+b,0);const p=t>0?((ctx.raw/t)*100).toFixed(1):0;return` ${ctx.label}: ${fmtN(ctx.raw)} (${p}%)`;}}}
+                        }
+                    }
+                });
+            });}
         } catch(e){toast('Ошибка загрузки','error');}
         finally{document.getElementById('loadingOverlay').style.display='none';}
     }

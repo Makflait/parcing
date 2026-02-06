@@ -47,6 +47,10 @@ services:
       - ADMIN_EMAIL=${ADMIN_EMAIL:-admin@blogger-analytics.local}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin2026!}
       - ADMIN_NAME=${ADMIN_NAME:-Admin}
+      - MAX_VIDEOS_PER_PLATFORM=${MAX_VIDEOS_PER_PLATFORM:-50}
+      - INSTAGRAM_USERNAME=${INSTAGRAM_USERNAME:-}
+      - INSTAGRAM_PASSWORD=${INSTAGRAM_PASSWORD:-}
+      - INSTAGRAM_SESSION_DIR=/app/data
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data
@@ -68,6 +72,10 @@ services:
       - DATABASE_URL=postgresql://blogger_user:${DB_PASSWORD:-secure_password_change_me}@db:5432/blogger_analytics
       - REDIS_URL=redis://redis:6379/0
       - SECRET_KEY=${SECRET_KEY:-change_this_secret_key_in_production}
+      - MAX_VIDEOS_PER_PLATFORM=${MAX_VIDEOS_PER_PLATFORM:-50}
+      - INSTAGRAM_USERNAME=${INSTAGRAM_USERNAME:-}
+      - INSTAGRAM_PASSWORD=${INSTAGRAM_PASSWORD:-}
+      - INSTAGRAM_SESSION_DIR=/app/data
     volumes:
       - ./logs:/app/logs
       - ./data:/app/data

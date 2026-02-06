@@ -12,6 +12,9 @@ import time
 # Добавляем путь к парсерам
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Лимит видео на платформу (по умолчанию 50, настраивается через env)
+MAX_VIDEOS = int(os.getenv('MAX_VIDEOS_PER_PLATFORM', '50'))
+
 try:
     from parsers import YouTubeParser, TikTokParser, InstagramParser
     PARSERS_AVAILABLE = True
@@ -76,7 +79,7 @@ class ParserService:
             if blogger.youtube_url and self.yt_parser:
                 try:
                     self._update_status(blogger_id, blogger.name, 'youtube', 10)
-                    videos = self.yt_parser.get_all_videos(blogger.youtube_url, max_videos=30)
+                    videos = self.yt_parser.get_all_videos(blogger.youtube_url, max_videos=MAX_VIDEOS)
 
                     for video in (videos or []):
                         self._save_video(user_id, blogger_id, 'youtube', video)
@@ -91,7 +94,7 @@ class ParserService:
             if blogger.tiktok_url and self.tt_parser:
                 try:
                     self._update_status(blogger_id, blogger.name, 'tiktok', 40)
-                    videos = self.tt_parser.get_all_videos(blogger.tiktok_url, max_videos=30)
+                    videos = self.tt_parser.get_all_videos(blogger.tiktok_url, max_videos=MAX_VIDEOS)
 
                     for video in (videos or []):
                         self._save_video(user_id, blogger_id, 'tiktok', video)
@@ -106,7 +109,7 @@ class ParserService:
             if blogger.instagram_url and self.ig_parser:
                 try:
                     self._update_status(blogger_id, blogger.name, 'instagram', 70)
-                    videos = self.ig_parser.get_all_videos(blogger.instagram_url, max_videos=30)
+                    videos = self.ig_parser.get_all_videos(blogger.instagram_url, max_videos=MAX_VIDEOS)
 
                     for video in (videos or []):
                         self._save_video(user_id, blogger_id, 'instagram', video)

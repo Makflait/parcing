@@ -388,7 +388,7 @@ def get_blogger_details(blogger_id):
         videos = VideoHistory.query.filter_by(
             blogger_id=blogger_id,
             user_id=user_id
-        ).order_by(VideoHistory.views.desc()).limit(100).all()
+        ).order_by(VideoHistory.views.desc()).limit(200).all()
 
         videos_data = []
         for v in videos:

@@ -1,7 +1,9 @@
 """
-Парсер для Instagram v3.0
+Парсер для Instagram v4.0
 Использует instaloader (основной) и yt-dlp (fallback)
+Поддержка авторизации для доступа к просмотрам
 """
+import os
 import re
 from typing import Optional, Dict, List
 from datetime import datetime
@@ -24,6 +26,7 @@ class InstagramParser:
 
     def __init__(self, use_selenium=False):
         self._loader = None
+        self._logged_in = False
         if INSTALOADER_AVAILABLE:
             self._loader = instaloader.Instaloader(
                 download_pictures=False,
@@ -35,6 +38,54 @@ class InstagramParser:
                 compress_json=False,
                 quiet=True,
             )
+            self._try_login()
+
+    def _try_login(self):
+        """Авторизация в Instagram через env переменные"""
+        ig_user = os.getenv('INSTAGRAM_USERNAME', '').strip()
+        ig_pass = os.getenv('INSTAGRAM_PASSWORD', '').strip()
+
+        if not ig_user or not ig_pass or not self._loader:
+            return
+
+        # Пробуем загрузить сохранённую сессию
+        session_dir = os.getenv('INSTAGRAM_SESSION_DIR', '/app/data')
+        session_file = os.path.join(session_dir, f'ig_session_{ig_user}')
+
+        try:
+            if os.path.exists(session_file):
+                self._loader.load_session_from_file(ig_user, session_file)
+                # Проверяем что сессия жива
+                try:
+                    self._loader.test_login()
+                    self._logged_in = True
+                    print(f"Instagram: восстановлена сессия @{ig_user}")
+                    return
+                except Exception:
+                    print("Instagram: сессия истекла, логинимся заново")
+        except Exception:
+            pass
+
+        # Логинимся с нуля
+        try:
+            self._loader.login(ig_user, ig_pass)
+            self._logged_in = True
+            print(f"Instagram: авторизация @{ig_user} успешна")
+
+            # Сохраняем сессию
+            try:
+                os.makedirs(session_dir, exist_ok=True)
+                self._loader.save_session_to_file(session_file)
+            except Exception:
+                pass
+        except instaloader.exceptions.TwoFactorAuthRequiredException:
+            print("Instagram: требуется 2FA — отключите или используйте app password")
+        except instaloader.exceptions.BadCredentialsException:
+            print("Instagram: неверный логин/пароль")
+        except instaloader.exceptions.ConnectionException as e:
+            print(f"Instagram: ошибка подключения при логине — {e}")
+        except Exception as e:
+            print(f"Instagram: ошибка авторизации — {e}")
 
     def get_all_videos(self, profile_url: str, max_videos: int = 30) -> List[Dict]:
         """Получает видео/посты с профиля Instagram"""
@@ -73,13 +124,22 @@ class InstagramParser:
 
                 try:
                     views = 0
-                    if post.is_video and post.video_view_count:
-                        views = post.video_view_count
+                    if post.is_video:
+                        views = post.video_view_count or 0
+                    # Для авторизованных — пробуем получить engagement-метрики
+                    if views == 0 and self._logged_in:
+                        try:
+                            views = post.video_view_count or 0
+                        except Exception:
+                            pass
 
                     caption = post.caption or ''
                     title = caption[:200] if caption else f'Post by @{username}'
 
                     publish_date = post.date_utc.strftime('%Y-%m-%d') if post.date_utc else datetime.now().strftime('%Y-%m-%d')
+
+                    # Хэштеги
+                    hashtags = list(post.caption_hashtags) if post.caption_hashtags else []
 
                     videos.append({
                         'title': title,
@@ -91,6 +151,7 @@ class InstagramParser:
                         'publish_date': publish_date,
                         'channel': username,
                         'uploader': username,
+                        'hashtags': hashtags,
                     })
                     count += 1
                 except Exception:
