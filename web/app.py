@@ -174,6 +174,17 @@ parser_status = {
     'log': []
 }
 
+def _get_parser_service():
+    try:
+        from web.parser_service import get_parser_service
+        return get_parser_service()
+    except ImportError:
+        try:
+            from parser_service import get_parser_service
+            return get_parser_service()
+        except ImportError:
+            return None
+
 
 # ==================== HELPERS ====================
 
@@ -527,8 +538,7 @@ def add_blogger():
 
         # Запускаем парсинг в фоне
         try:
-            from parser_service import get_parser_service
-            ps = get_parser_service()
+            ps = _get_parser_service()
             if ps:
                 ps.parse_blogger_async(blogger.id, user_id)
         except:
@@ -609,8 +619,7 @@ def parse_single_blogger(blogger_id):
             return jsonify({'error': 'Блогер не найден'}), 404
 
         try:
-            from parser_service import get_parser_service
-            ps = get_parser_service()
+            ps = _get_parser_service()
             if ps:
                 result = ps.parse_blogger_async(blogger.id, user_id)
                 return jsonify(result)
@@ -632,8 +641,7 @@ def start_parser():
     try:
         user_id = int(get_jwt_identity())
 
-        from parser_service import get_parser_service
-        ps = get_parser_service()
+        ps = _get_parser_service()
 
         if not ps:
             return jsonify({'error': 'Parser service not available'}), 500
@@ -667,8 +675,7 @@ def start_parser():
 def get_parser_status():
     """Статус парсера"""
     try:
-        from parser_service import get_parser_service
-        ps = get_parser_service()
+        ps = _get_parser_service()
 
         if ps:
             return jsonify(ps.status)
