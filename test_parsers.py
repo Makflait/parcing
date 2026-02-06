@@ -3,6 +3,7 @@
 Запустите этот скрипт чтобы убедиться, что все работает правильно
 """
 import sys
+import os
 from parsers import YouTubeParser, TikTokParser, InstagramParser
 from utils import logger
 
@@ -23,14 +24,14 @@ def test_youtube():
         video_data = parser.get_latest_video(test_url)
 
         if video_data:
-            print("\n✓ YouTube парсер работает!")
+            print("\n[OK] YouTube парсер работает!")
             print(f"  Название: {video_data.get('title', 'N/A')[:60]}...")
             print(f"  URL: {video_data.get('url', 'N/A')}")
             print(f"  Просмотры: {video_data.get('views', 0):,}")
             print(f"  Лайки: {video_data.get('likes', 0):,}")
             return True
         else:
-            print("\n✗ YouTube парсер не смог получить данные")
+            print("\n[ERR] YouTube парсер не смог получить данные")
             print("  Возможные причины:")
             print("  - Изменилась структура YouTube")
             print("  - Проблемы с интернет-соединением")
@@ -38,7 +39,7 @@ def test_youtube():
             return False
 
     except Exception as e:
-        print(f"\n✗ Ошибка при тестировании YouTube: {e}")
+        print(f"\n[ERR] Ошибка при тестировании YouTube: {e}")
         return False
     finally:
         parser.close()
@@ -53,8 +54,8 @@ def test_tiktok():
     # Тестовый профиль
     test_url = "https://www.tiktok.com/@tiktok"
 
-    print("⚠️  ВНИМАНИЕ: TikTok парсер использует Selenium (может быть медленным)")
-    print("⚠️  TikTok часто блокирует автоматические запросы")
+    print("[WARN]  ВНИМАНИЕ: TikTok парсер использует Selenium (может быть медленным)")
+    print("[WARN]  TikTok часто блокирует автоматические запросы")
 
     try:
         parser = TikTokParser(use_selenium=True)
@@ -63,14 +64,14 @@ def test_tiktok():
         video_data = parser.get_latest_video(test_url)
 
         if video_data:
-            print("\n✓ TikTok парсер работает!")
+            print("\n[OK] TikTok парсер работает!")
             print(f"  Название: {video_data.get('title', 'N/A')[:60]}...")
             print(f"  URL: {video_data.get('url', 'N/A')}")
             print(f"  Просмотры: {video_data.get('views', 0):,}")
             print(f"  Лайки: {video_data.get('likes', 0):,}")
             return True
         else:
-            print("\n✗ TikTok парсер не смог получить данные")
+            print("\n[ERR] TikTok парсер не смог получить данные")
             print("  Возможные причины:")
             print("  - TikTok заблокировал запрос")
             print("  - Изменилась структура TikTok")
@@ -78,7 +79,7 @@ def test_tiktok():
             return False
 
     except Exception as e:
-        print(f"\n✗ Ошибка при тестировании TikTok: {e}")
+        print(f"\n[ERR] Ошибка при тестировании TikTok: {e}")
         return False
     finally:
         parser.close()
@@ -93,8 +94,8 @@ def test_instagram():
     # Тестовый профиль
     test_url = "https://www.instagram.com/instagram"
 
-    print("⚠️  ВНИМАНИЕ: Instagram парсер использует Selenium (может быть медленным)")
-    print("⚠️  Instagram часто требует авторизацию для просмотра данных")
+    print("[WARN]  ВНИМАНИЕ: Instagram парсер использует Selenium (может быть медленным)")
+    print("[WARN]  Instagram часто требует авторизацию для просмотра данных")
 
     try:
         parser = InstagramParser(use_selenium=True)
@@ -103,14 +104,14 @@ def test_instagram():
         video_data = parser.get_latest_video(test_url)
 
         if video_data:
-            print("\n✓ Instagram парсер работает!")
+            print("\n[OK] Instagram парсер работает!")
             print(f"  Описание: {video_data.get('title', 'N/A')[:60]}...")
             print(f"  URL: {video_data.get('url', 'N/A')}")
             print(f"  Просмотры: {video_data.get('views', 0):,}")
             print(f"  Лайки: {video_data.get('likes', 0):,}")
             return True
         else:
-            print("\n✗ Instagram парсер не смог получить данные")
+            print("\n[ERR] Instagram парсер не смог получить данные")
             print("  Возможные причины:")
             print("  - Instagram заблокировал запрос")
             print("  - Изменилась структура Instagram")
@@ -118,7 +119,7 @@ def test_instagram():
             return False
 
     except Exception as e:
-        print(f"\n✗ Ошибка при тестировании Instagram: {e}")
+        print(f"\n[ERR] Ошибка при тестировании Instagram: {e}")
         return False
     finally:
         parser.close()
@@ -135,13 +136,13 @@ def test_google_sheets():
 
     # Проверка наличия credentials.json
     if not os.path.exists('credentials.json'):
-        print("✗ Файл credentials.json не найден")
+        print("[ERR] Файл credentials.json не найден")
         print("  Создайте credentials.json согласно инструкции в README.md")
         return False
 
     # Проверка config.json
     if not os.path.exists('config.json'):
-        print("✗ Файл config.json не найден")
+        print("[ERR] Файл config.json не найден")
         return False
 
     try:
@@ -155,11 +156,11 @@ def test_google_sheets():
         sheets_manager = SheetsManager('credentials.json', spreadsheet_name)
 
         if sheets_manager.connect():
-            print("\n✓ Подключение к Google Sheets успешно!")
+            print("\n[OK] Подключение к Google Sheets успешно!")
             print(f"  Таблица: {spreadsheet_name}")
             return True
         else:
-            print("\n✗ Не удалось подключиться к Google Sheets")
+            print("\n[ERR] Не удалось подключиться к Google Sheets")
             print("  Проверьте:")
             print("  - Правильность credentials.json")
             print("  - Название таблицы в config.json")
@@ -167,7 +168,7 @@ def test_google_sheets():
             return False
 
     except Exception as e:
-        print(f"\n✗ Ошибка при тестировании Google Sheets: {e}")
+        print(f"\n[ERR] Ошибка при тестировании Google Sheets: {e}")
         return False
 
 
@@ -188,20 +189,20 @@ def main():
     results['google_sheets'] = test_google_sheets()
 
     # Тест парсеров
-    print("\n⚠️  Тестирование парсеров может занять несколько минут...")
-    print("⚠️  Вы можете пропустить тесты нажав Ctrl+C\n")
+    print("\n[WARN]  Тестирование парсеров может занять несколько минут...")
+    print("[WARN]  Вы можете пропустить тесты нажав Ctrl+C\n")
 
     try:
         # YouTube (быстрый)
         results['youtube'] = test_youtube()
 
         # TikTok (медленный)
-        response = input("\nТестировать TikTok? (медленно, может не работать) [y/N]: ")
+        response = ('y' if os.getenv('RUN_SLOW_TESTS') == '1' else 'n')
         if response.lower() == 'y':
             results['tiktok'] = test_tiktok()
 
         # Instagram (медленный)
-        response = input("\nТестировать Instagram? (медленно, может не работать) [y/N]: ")
+        response = ('y' if os.getenv('RUN_SLOW_TESTS') == '1' else 'n')
         if response.lower() == 'y':
             results['instagram'] = test_instagram()
 
@@ -214,7 +215,7 @@ def main():
     print("="*60)
 
     for test_name, result in results.items():
-        status = "✓ PASSED" if result else "✗ FAILED"
+        status = "[OK] PASSED" if result else "[ERR] FAILED"
         print(f"{test_name.upper():20} {status}")
 
     # Рекомендации
@@ -223,18 +224,18 @@ def main():
     print("="*60)
 
     if not results['google_sheets']:
-        print("\n❌ Google Sheets не работает - это критично!")
+        print("\n[ERR] Google Sheets не работает - это критично!")
         print("   Без этого основная функциональность недоступна.")
         print("   Смотрите SETUP.md для настройки.")
 
     if results['youtube']:
-        print("\n✓ YouTube работает - основной парсер готов к использованию")
+        print("\n[OK] YouTube работает - основной парсер готов к использованию")
     else:
-        print("\n⚠️  YouTube парсер не работает")
+        print("\n[WARN]  YouTube парсер не работает")
         print("   Попробуйте включить Selenium режим в main.py")
 
     if not results['tiktok'] and not results['instagram']:
-        print("\n⚠️  TikTok и Instagram парсеры могут не работать без дополнительной настройки")
+        print("\n[WARN]  TikTok и Instagram парсеры могут не работать без дополнительной настройки")
         print("   Это нормально - эти платформы активно борются с парсингом")
         print("   Рекомендуется:")
         print("   - Использовать VPN")
@@ -244,13 +245,13 @@ def main():
     # Финальный вердикт
     print("\n" + "="*60)
     if results['google_sheets'] and results['youtube']:
-        print("✓ Система готова к работе!")
+        print("[OK] Система готова к работе!")
         print("  Запустите: python main.py")
     elif results['google_sheets']:
-        print("⚠️  Система частично готова")
+        print("[WARN]  Система частично готова")
         print("  Google Sheets работает, но есть проблемы с парсерами")
     else:
-        print("✗ Система не готова")
+        print("[ERR] Система не готова")
         print("  Необходимо настроить Google Sheets")
         print("  Смотрите SETUP.md")
 
@@ -261,6 +262,6 @@ if __name__ == '__main__':
     try:
         main()
     except Exception as e:
-        print(f"\n✗ Критическая ошибка: {e}")
+        print(f"\n[ERR] Критическая ошибка: {e}")
         logger.error(f"Критическая ошибка при тестировании: {e}", exc_info=True)
         sys.exit(1)
