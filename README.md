@@ -78,6 +78,7 @@ ADMIN_PASSWORD=надёжный_пароль
 # Без логина Instagram отдаёт views=0 для фото-постов
 INSTAGRAM_USERNAME=сервисный_аккаунт
 INSTAGRAM_PASSWORD=пароль_аккаунта
+INSTAGRAM_TOTP_SECRET=XXXXYYYYZZZZAAAA    # TOTP секрет для 2FA (base32, без пробелов)
 
 # Лимит видео на платформу (по умолчанию 1000)
 MAX_VIDEOS_PER_PLATFORM=1000
@@ -85,7 +86,7 @@ MAX_VIDEOS_PER_PLATFORM=1000
 
 > **Instagram аккаунт**: используйте отдельный сервисный аккаунт.
 > Instagram блокирует за частые запросы с основного.
-> Если включена 2FA -- отключите или используйте app password.
+> 2FA поддерживается автоматически через TOTP -- укажите секрет в `INSTAGRAM_TOTP_SECRET`.
 
 ### 3. Запуск
 
@@ -186,6 +187,7 @@ docker compose --profile production up -d
 | `MAX_VIDEOS_PER_PLATFORM` | `1000` | Макс. видео на платформу при парсинге |
 | `INSTAGRAM_USERNAME` | -- | Логин Instagram для views |
 | `INSTAGRAM_PASSWORD` | -- | Пароль Instagram |
+| `INSTAGRAM_TOTP_SECRET` | -- | TOTP секрет для автоматической 2FA (base32, без пробелов) |
 | `FLASK_ENV` | `production` | Режим Flask |
 
 ---

@@ -1,12 +1,18 @@
 """
-Парсер для Instagram v4.0
+Парсер для Instagram v4.1
 Использует instaloader (основной) и yt-dlp (fallback)
-Поддержка авторизации для доступа к просмотрам
+Поддержка авторизации + TOTP 2FA для доступа к просмотрам
 """
 import os
 import re
 from typing import Optional, Dict, List
 from datetime import datetime
+
+try:
+    import pyotp
+    PYOTP_AVAILABLE = True
+except ImportError:
+    PYOTP_AVAILABLE = False
 
 try:
     import instaloader
@@ -73,19 +79,39 @@ class InstagramParser:
             print(f"Instagram: авторизация @{ig_user} успешна")
 
             # Сохраняем сессию
-            try:
-                os.makedirs(session_dir, exist_ok=True)
-                self._loader.save_session_to_file(session_file)
-            except Exception:
-                pass
+            self._save_session(session_dir, session_file)
         except instaloader.exceptions.TwoFactorAuthRequiredException:
-            print("Instagram: требуется 2FA — отключите или используйте app password")
+            # Автоматическая 2FA через TOTP
+            totp_secret = os.getenv('INSTAGRAM_TOTP_SECRET', '').strip().replace(' ', '')
+            if totp_secret and PYOTP_AVAILABLE:
+                try:
+                    totp = pyotp.TOTP(totp_secret)
+                    code = totp.now()
+                    self._loader.two_factor_login(code)
+                    self._logged_in = True
+                    print(f"Instagram: 2FA авторизация @{ig_user} успешна (TOTP)")
+                    self._save_session(session_dir, session_file)
+                except Exception as e:
+                    print(f"Instagram: ошибка 2FA — {e}")
+            else:
+                if not PYOTP_AVAILABLE:
+                    print("Instagram: 2FA требуется, но pyotp не установлен (pip install pyotp)")
+                else:
+                    print("Instagram: 2FA требуется — задайте INSTAGRAM_TOTP_SECRET в .env")
         except instaloader.exceptions.BadCredentialsException:
             print("Instagram: неверный логин/пароль")
         except instaloader.exceptions.ConnectionException as e:
             print(f"Instagram: ошибка подключения при логине — {e}")
         except Exception as e:
             print(f"Instagram: ошибка авторизации — {e}")
+
+    def _save_session(self, session_dir, session_file):
+        """Сохранить сессию на диск"""
+        try:
+            os.makedirs(session_dir, exist_ok=True)
+            self._loader.save_session_to_file(session_file)
+        except Exception:
+            pass
 
     def get_all_videos(self, profile_url: str, max_videos: int = 30) -> List[Dict]:
         """Получает видео/посты с профиля Instagram"""
