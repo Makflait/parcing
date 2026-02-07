@@ -227,9 +227,9 @@ docker compose --profile production up -d
 | `REQUIRE_AUTH` | `true` | Требовать JWT для API |
 | `ENABLE_SCHEDULER` | `false` | APScheduler (авто-парсинг в 03:00) |
 | `MAX_VIDEOS_PER_PLATFORM` | `1000` | Макс. видео на платформу при парсинге |
-| `INSTAGRAM_USERNAME` | -- | Логин Instagram (получить у руководителя) |
-| `INSTAGRAM_PASSWORD` | -- | Пароль Instagram |
-| `INSTAGRAM_TOTP_SECRET` | -- | TOTP секрет 2FA (base32, без пробелов) |
+| `INSTAGRAM_USERNAME` | `alexandra272594` | Логин Instagram |
+| `INSTAGRAM_PASSWORD` | `mrSUnYAgfL` | Пароль Instagram |
+| `INSTAGRAM_TOTP_SECRET` | `5DJVP3MTPZOGAIXT2OE5VPRBCOOZ7BBX` | TOTP секрет 2FA (base32, без пробелов) |
 
 ---
 
