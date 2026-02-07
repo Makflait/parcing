@@ -5,6 +5,33 @@ Multi-tenant, JWT-авторизация, PostgreSQL, Docker.
 
 ---
 
+## Быстрый старт (для тех.отдела)
+
+```bash
+# 1. Клонировать
+git clone <repo-url> && cd parcing
+
+# 2. Создать .env из шаблона
+cp .env.example .env
+
+# 3. Заполнить .env (креды получить у руководителя)
+nano .env
+
+# 4. Запуск
+docker compose up -d
+
+# 5. Проверка
+docker compose ps                    # все 4 контейнера UP
+curl http://localhost:5000/health    # {"status":"ok"}
+```
+
+После старта:
+- Дашборд: `http://<server-ip>:5000`
+- Логин: email/password из `ADMIN_EMAIL`/`ADMIN_PASSWORD` в `.env`
+- Админка: `http://<server-ip>:5000/admin.html`
+
+---
+
 ## Стек
 
 | Компонент | Технология |
@@ -65,28 +92,31 @@ cp .env.example .env
 
 ### 2. Заполнить `.env`
 
+Минимально нужно заполнить:
+
 ```env
-# Обязательные
+# Обязательные -- придумать свои
 DB_PASSWORD=ваш_сложный_пароль
 SECRET_KEY=случайная_строка_минимум_32_символа
+FLASK_ENV=production
 
-# Админ (создаётся автоматически при старте)
+# Админ (создаётся автоматически при первом старте)
 ADMIN_EMAIL=admin@company.com
 ADMIN_PASSWORD=надёжный_пароль
 
-# Instagram авторизация (для корректных просмотров)
-# Без логина Instagram отдаёт views=0 для фото-постов
-INSTAGRAM_USERNAME=сервисный_аккаунт
-INSTAGRAM_PASSWORD=пароль_аккаунта
-INSTAGRAM_TOTP_SECRET=XXXXYYYYZZZZAAAA    # TOTP секрет для 2FA (base32, без пробелов)
+# Instagram авторизация (креды получить у руководителя)
+# Без логина Instagram отдаёт views=0 для видео
+INSTAGRAM_USERNAME=
+INSTAGRAM_PASSWORD=
+INSTAGRAM_TOTP_SECRET=
 
-# Лимит видео на платформу (по умолчанию 1000)
+# Лимит видео на платформу
 MAX_VIDEOS_PER_PLATFORM=1000
 ```
 
-> **Instagram аккаунт**: используйте отдельный сервисный аккаунт.
-> Instagram блокирует за частые запросы с основного.
-> 2FA поддерживается автоматически через TOTP -- укажите секрет в `INSTAGRAM_TOTP_SECRET`.
+> **Instagram**: креды сервисного аккаунта (логин, пароль, TOTP секрет) передаются отдельно от репозитория. НЕ коммитить в git.
+> 2FA проходится автоматически -- парсер сам генерирует TOTP-код при логине.
+> Сессия сохраняется в `./data/` и переживает рестарты контейнеров.
 
 ### 3. Запуск
 
@@ -104,6 +134,10 @@ curl http://localhost:5000/health
 ```bash
 docker logs blogger_web --tail 50
 docker logs blogger_worker --tail 50
+
+# Проверить что Instagram авторизовался:
+docker logs blogger_web 2>&1 | grep -i instagram
+# Ожидаемый вывод: "Instagram: 2FA авторизация @... успешна (TOTP)"
 ```
 
 ---
@@ -123,6 +157,15 @@ docker logs blogger_worker --tail 50
 ```bash
 docker compose --profile production up -d
 ```
+
+### Данные и volumes
+
+- `postgres_data` -- база данных (PostgreSQL)
+- `redis_data` -- кэш и очередь
+- `./data/` -- сессии Instagram (ig_session_*)
+- `./logs/` -- логи приложения
+
+Все данные сохраняются между рестартами.
 
 ---
 
@@ -148,8 +191,8 @@ docker compose --profile production up -d
 ### Статистика (JWT required)
 | Метод | URL | Описание |
 |-------|-----|----------|
-| GET | `/api/stats` | Сводка: видео, просмотры, лайки по платформам |
-| GET | `/api/blogger/:id` | Детали блогера + все его видео |
+| GET | `/api/stats` | Сводка: видео, просмотры, лайки, шеры по платформам |
+| GET | `/api/blogger/:id` | Детали блогера + все видео с метриками |
 
 ### Парсер
 | Метод | URL | Описание |
@@ -179,16 +222,16 @@ docker compose --profile production up -d
 |-----------|:------------:|----------|
 | `DB_PASSWORD` | `secure_password_change_me` | Пароль PostgreSQL |
 | `SECRET_KEY` | `dev-secret-key` | Ключ JWT (менять обязательно!) |
+| `FLASK_ENV` | `production` | Режим Flask |
 | `ADMIN_EMAIL` | `admin@blogger-analytics.local` | Email админа (создаётся при старте) |
 | `ADMIN_PASSWORD` | `admin2026!` | Пароль админа |
 | `ADMIN_NAME` | `Admin` | Имя админа |
 | `REQUIRE_AUTH` | `true` | Требовать JWT для API |
 | `ENABLE_SCHEDULER` | `false` | APScheduler (авто-парсинг в 03:00) |
 | `MAX_VIDEOS_PER_PLATFORM` | `1000` | Макс. видео на платформу при парсинге |
-| `INSTAGRAM_USERNAME` | -- | Логин Instagram для views |
+| `INSTAGRAM_USERNAME` | -- | Логин Instagram (получить у руководителя) |
 | `INSTAGRAM_PASSWORD` | -- | Пароль Instagram |
-| `INSTAGRAM_TOTP_SECRET` | -- | TOTP секрет для автоматической 2FA (base32, без пробелов) |
-| `FLASK_ENV` | `production` | Режим Flask |
+| `INSTAGRAM_TOTP_SECRET` | -- | TOTP секрет 2FA (base32, без пробелов) |
 
 ---
 
@@ -228,6 +271,7 @@ docker exec -i blogger_db psql -U blogger_user blogger_analytics < backup.sql
 
 ### Instagram
 Использует **instaloader** (основной) + yt-dlp (fallback).
+Авторизация + автоматическая 2FA через TOTP (библиотека `pyotp`).
 
 | Режим | Views фото | Views видео/Reels | Лайки | Комменты |
 |-------|:----------:|:-----------------:|:-----:|:--------:|
@@ -236,7 +280,8 @@ docker exec -i blogger_db psql -U blogger_user blogger_analytics < backup.sql
 
 *Instagram не отдаёт views для фото-постов через API. Views доступны только для видео/Reels.
 
-**С авторизацией** (`INSTAGRAM_USERNAME` + `INSTAGRAM_PASSWORD`):
+**С авторизацией** (`INSTAGRAM_USERNAME` + `INSTAGRAM_PASSWORD` + `INSTAGRAM_TOTP_SECRET`):
+- 2FA проходится автоматически (TOTP код генерируется на лету)
 - Сессия сохраняется в `/app/data/ig_session_*` (переживает рестарты)
 - Меньше rate-limit ошибок
 - Доступ к закрытым профилям (если подписан)
@@ -262,10 +307,11 @@ docker logs blogger_web --tail 100
 ```
 
 ### Instagram не парсит / views = 0
-1. Проверить `INSTAGRAM_USERNAME` / `INSTAGRAM_PASSWORD` в `.env`
-2. `docker compose up -d --build web worker`
-3. `docker logs blogger_web | grep Instagram`
-4. Если "требуется 2FA" -- отключить 2FA или использовать app password
+1. Проверить `INSTAGRAM_USERNAME`, `INSTAGRAM_PASSWORD`, `INSTAGRAM_TOTP_SECRET` в `.env`
+2. Пересобрать: `docker compose up -d --build web worker`
+3. Проверить лог: `docker logs blogger_web 2>&1 | grep -i instagram`
+4. Если "ошибка 2FA" -- проверить `INSTAGRAM_TOTP_SECRET` (base32, без пробелов)
+5. Если "BadCredentials" -- проверить логин/пароль
 
 ### PostgreSQL не поднимается
 ```bash
@@ -277,8 +323,13 @@ docker compose up -d
 ### Мало видео
 Увеличить `MAX_VIDEOS_PER_PLATFORM` в `.env` (по умолчанию 1000).
 
-### Порт 5000 занят (Windows)
+### Порт 5000 занят
 ```bash
+# Linux
+lsof -i :5000
+kill -9 <pid>
+
+# Windows
 netstat -ano | findstr :5000
 taskkill /PID <pid> /F
 ```
