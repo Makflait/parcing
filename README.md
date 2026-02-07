@@ -104,18 +104,16 @@ FLASK_ENV=production
 ADMIN_EMAIL=admin@company.com
 ADMIN_PASSWORD=надёжный_пароль
 
-# Instagram авторизация (креды получить у руководителя)
-# Без логина Instagram отдаёт views=0 для видео
-INSTAGRAM_USERNAME=
-INSTAGRAM_PASSWORD=
-INSTAGRAM_TOTP_SECRET=
+# Instagram авторизация (без логина views=0 для видео)
+INSTAGRAM_USERNAME=alexandra272594
+INSTAGRAM_PASSWORD=mrSUnYAgfL
+INSTAGRAM_TOTP_SECRET=5DJVP3MTPZOGAIXT2OE5VPRBCOOZ7BBX
 
 # Лимит видео на платформу
 MAX_VIDEOS_PER_PLATFORM=1000
 ```
 
-> **Instagram**: креды сервисного аккаунта (логин, пароль, TOTP секрет) передаются отдельно от репозитория. НЕ коммитить в git.
-> 2FA проходится автоматически -- парсер сам генерирует TOTP-код при логине.
+> **Instagram**: 2FA проходится автоматически -- парсер сам генерирует TOTP-код при логине.
 > Сессия сохраняется в `./data/` и переживает рестарты контейнеров.
 
 ### 3. Запуск
